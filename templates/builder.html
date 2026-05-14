@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Codebusters Test Builder</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222; }
+
+/* ── Layout ── */
+#app { display: flex; flex-direction: column; height: 100vh; }
+#top-bar { background: #222; color: #eee; padding: 8px 16px; display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+#top-bar h1 { font-size: 15px; letter-spacing: 1px; }
+#top-bar button { background: #444; color: #eee; border: 1px solid #666; padding: 4px 10px; cursor: pointer; font-family: monospace; }
+#top-bar button:hover { background: #555; }
+#main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Left panel ── */
+#left { width: 55%; display: flex; flex-direction: column; border-right: 1px solid #ccc; overflow: hidden; }
+
+/* Settings */
+#settings-panel { background: #fff; border-bottom: 1px solid #ccc; padding: 10px 14px; }
+#settings-panel summary { font-weight: bold; cursor: pointer; user-select: none; margin-bottom: 6px; }
+#settings-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 12px; margin-top: 8px; }
+#settings-grid label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: #555; }
+#settings-grid input, #settings-grid select, #settings-grid textarea { font-family: monospace; font-size: 12px; border: 1px solid #ccc; padding: 3px 5px; width: 100%; }
+#settings-grid textarea { grid-column: 1/-1; resize: vertical; height: 48px; }
+
+/* Question form */
+#form-panel { background: #fff; border-bottom: 2px solid #aaa; padding: 10px 14px; }
+#form-panel h2 { font-size: 13px; margin-bottom: 8px; font-weight: bold; }
+#form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+#form-grid label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: #555; }
+#form-grid input, #form-grid select { font-family: monospace; font-size: 12px; border: 1px solid #ccc; padding: 3px 5px; width: 100%; }
+#form-grid .span2 { grid-column: span 2; }
+#form-grid .span4 { grid-column: span 4; }
+#key-hints { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
+#key-hints label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: #555; }
+#key-hints input, #key-hints select { font-family: monospace; font-size: 12px; border: 1px solid #ccc; padding: 3px 5px; }
+#add-btn { margin-top: 8px; background: #222; color: #fff; border: none; padding: 6px 18px; cursor: pointer; font-family: monospace; font-size: 13px; }
+#add-btn:hover { background: #444; }
+#form-error { color: red; font-size: 11px; margin-top: 4px; min-height: 14px; }
+
+/* Question list */
+#list-header { background: #e8e8e8; padding: 6px 14px; font-size: 11px; color: #555; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; }
+#question-list { flex: 1; overflow-y: auto; padding: 6px; }
+.q-row { background: #fff; border: 1px solid #ddd; margin-bottom: 4px; padding: 6px 10px; display: flex; align-items: flex-start; gap: 8px; cursor: grab; user-select: none; }
+.q-row:active { cursor: grabbing; }
+.q-row.dragging { opacity: 0.4; }
+.q-row.drag-over { border-top: 2px solid #222; }
+.q-num { font-weight: bold; min-width: 22px; color: #888; }
+.q-info { flex: 1; }
+.q-title { font-weight: bold; font-size: 12px; }
+.q-sub { font-size: 11px; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 340px; }
+.q-del { color: #999; cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; }
+.q-del:hover { color: #c00; }
+.q-bonus { color: #e8a000; font-size: 10px; font-weight: bold; }
+
+/* ── Right panel (preview) ── */
+#right { flex: 1; display: flex; flex-direction: column; }
+#preview-tabs { background: #e0e0e0; display: flex; border-bottom: 1px solid #ccc; }
+.tab { padding: 7px 18px; cursor: pointer; font-family: monospace; font-size: 13px; border-right: 1px solid #ccc; }
+.tab.active { background: #fff; font-weight: bold; }
+#preview-toolbar { background: #f0f0f0; padding: 5px 12px; display: flex; gap: 8px; border-bottom: 1px solid #ccc; align-items: center; }
+#preview-toolbar button { background: #333; color: #fff; border: none; padding: 4px 12px; cursor: pointer; font-family: monospace; }
+#preview-toolbar button:hover { background: #555; }
+#preview-status { font-size: 11px; color: #666; margin-left: 8px; }
+#preview-frame { flex: 1; border: none; background: #888; }
+#preview-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: #888; font-size: 14px; background: #ddd; }
+.q-row.editing { border: 2px solid #222; background: #fffbe6; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Top bar -->
+  <div id="top-bar">
+    <button onclick="goHome()" style="background:#444">← My Tests</button>
+    <h1 id="test-title">CODEBUSTERS TEST BUILDER</h1>
+    <span id="save-status" style="font-size:11px;color:#aaa;margin-right:8px"></span>
+    <button onclick="downloadPDF(false)">⬇ Download Test PDF</button>
+    <button onclick="downloadPDF(true)">⬇ Download Key PDF</button>
+  </div>
+
+  <div id="main">
+
+    <!-- LEFT: settings + form + list -->
+    <div id="left">
+
+      <!-- Settings -->
+      <div id="settings-grid">
+            <label>Tournament Name<input id="s-tournament" value="My Tournament" oninput="settingsChanged()"></label>
+            <label>Division
+              <select id="s-division" onchange="settingsChanged()">
+                <option value="B">B</option>
+                <option value="C">C</option>
+              </select>
+            </label>
+            <label>Date
+              <input id="s-compdate" type="date" value="2026-01-01" oninput="settingsChanged()">
+            </label>
+            <label>TQ Point Value<input id="s-tqvalue" value="250" oninput="settingsChanged()"></label>
+            <label>TQ Phrase<input id="s-tqphrase" value="raise your hand" oninput="settingsChanged()"></label>
+            <label>Bonus Question Numbers<input id="s-bonus_nums" value="INSERT BONUS QUESTION NUMBERS" oninput="settingsChanged()"></label>
+            <label style="grid-column:1/-1">Writers (names separated by commas)<input id="s-writers" value="INSERT WRITERS" oninput="settingsChanged()"></label>
+            <label style="grid-column:1/-1">TQ Plaintext<textarea id="s-tqcipher" oninput="settingsChanged()" placeholder="Enter the plaintext phrase"></textarea></label>
+            <label style="grid-column:1/-1">Cover Image
+              <input type="file" id="s-cover-file" accept="image/*" onchange="coverImageChanged(this)">
+              <span id="s-cover-status" style="font-size:11px;color:#888"></span>
+            </label>
+          </div>
+
+      <!-- Add Question Form -->
+      <div id="form-panel">
+        <h2>Add Question</h2>
+        <div id="form-grid">
+          <label class="span2">Cipher
+            <select id="f-cipher" onchange="onCipherChange()">
+              <option value="ARISTOCRAT">Aristocrat</option>
+              <option value="PATRISTOCRAT">Patristocrat</option>
+              <option value="XENOCRYPT">Xenocrypt</option>
+              <option value="ATBASH">Atbash</option>
+              <option value="BACONIAN">Baconian</option>
+              <option value="CAESAR">Caesar</option>
+              <option value="COLUMNAR">Complete Columnar</option>
+              <option value="CRYPTARITHM">Cryptarithm</option>
+              <option value="FRACMORSE">Fractionated Morse</option>
+              <option value="HILL">Hill</option>
+              <option value="NIHILIST">Nihilist</option>
+              <option value="PORTA">Porta</option>
+              <option value="AFFINE">Affine</option>
+              <option value="CHECKERBOARD">Checkerboard</option>
+            </select>
+          </label>
+          <label>Type
+            <select id="f-type" onchange="onTypeChange()">
+              <option value="DECODE">Decode (keys given)</option>
+              <option value="CRIB">Crib (keys hidden)</option>
+              <option value="WORDS">Words (Baconian)</option>
+              <option value="LETTERS">Letters (Baconian)</option>
+              <option value="EXTRACT">Extract (keyword)</option>
+            </select>
+          </label>
+          <label>Point Value
+            <input id="f-value" type="number" value="250" min="0">
+          </label>
+          <label class="span4">Plaintext
+            <div style="display:flex;gap:4px;align-items:center;">
+              <input id="f-plaintext" type="text" placeholder="Enter the plaintext phrase here" style="flex:1" oninput="handlePlaintextInput(this)">
+              <button type="button" id="nhtilde-btn" style="display:none;padding:3px 8px;font-size:13px;cursor:pointer;border:1px solid #ccc;background:#f8f8f8;" onclick="insertNTilde()">ñ</button>
+            </div>
+          </label>
+        </div>
+
+        <!-- Dynamic key fields -->
+        <div id="key-hints">
+          <!-- filled by onCipherChange() -->
+        </div>
+
+        <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;">
+          <input type="checkbox" id="f-bonus"> Bonus question
+        </label>
+        <div id="form-error"></div>
+        <button id="add-btn" onclick="addQuestion()">Add Question</button>
+        <button id="save-edit-btn" style="display:none;margin-top:8px;margin-left:8px;background:#222;color:#fff;border:none;padding:6px 14px;cursor:pointer;font-family:monospace;font-size:13px;" onclick="saveEdit()">Save Edit</button>
+        <button id="cancel-edit-btn" style="display:none;margin-top:8px;margin-left:8px;background:#888;color:#fff;border:none;padding:6px 14px;cursor:pointer;font-family:monospace;font-size:13px;" onclick="cancelEdit()">Cancel</button>
+      </div>
+
+      <div id="list-header">
+        <span id="list-count">0 questions</span>
+        <span>drag rows to reorder</span>
+      </div>
+      <div id="question-list"></div>
+    </div>
+
+    <!-- RIGHT: PDF preview -->
+    <div id="right">
+      <div id="preview-tabs">
+        <div class="tab active" id="tab-test" onclick="switchTab('test')">Test</div>
+        <div class="tab" id="tab-key" onclick="switchTab('key')">Answer Key</div>
+      </div>
+      <div id="preview-toolbar">
+        <button onclick="refreshPreview()">↺ Refresh Preview</button>
+        <span id="preview-status">Add questions to preview the PDF.</span>
+      </div>
+      <div id="preview-placeholder">Add at least one question, then click Refresh Preview.</div>
+      <iframe id="preview-frame" style="display:none"></iframe>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let questions = [];
+let activeTab = 'test';
+let previewDirty = false;
+let editingIndex = -1;  // -1 = adding new, >=0 = editing existing
+
+// ── Cipher field definitions ──────────────────────────────────────────────────
+
+const CIPHER_FIELDS = {
+  ARISTOCRAT:   [{id:'key1',label:'Keyword (blank=random)'},{id:'key2',label:'Shift'},{id:'key3',label:'Alph type (K1/K2/K3/blank)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},{id:'hint',label:'Hint text'}],
+  PATRISTOCRAT: [{id:'key1',label:'Keyword'},{id:'key2',label:'Shift'},{id:'key3',label:'Alph type (K1/K2/K3/blank)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},{id:'hint',label:'Hint text'}],
+  XENOCRYPT:    [{id:'key1',label:'Keyword'},{id:'key2',label:'Shift'},{id:'key3',label:'Alph type (K1/K2/K3/blank)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},{id:'hint',label:'Hint text'}],
+  ATBASH:       [{id:'key3',label:'Block size (default 5)'}],
+  BACONIAN:     [{id:'key1',label:'A-letters (e.g. AEIOU or 134)'},{id:'key2',label:'B-letters (e.g. BCDF or 689)'},{id:'key3',label:'Crib (WORDS type) / block len'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Letters']},{id:'hint',label:'Hint text'}],
+  CAESAR:       [{id:'key1',label:'Shift (integer)'}],
+  COLUMNAR:     [{id:'key1',label:'Columns (integer)'},{id:'key2',label:'Crib word'}],
+  CRYPTARITHM:  [{id:'key1',label:'Problem text (full block)'},{id:'key2',label:'Solution numbers (space-sep)'},{id:'key3',label:'Operation label'}],
+  FRACMORSE:    [{id:'key1',label:'Keyword'},{id:'key2',label:'Crib'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Start Crib','Middle Crib','End Crib']},{id:'hint',label:'Manual hint (auto-generated if blank)'}],
+  HILL:         [{id:'key1',label:'Keyword (4 or 9 letters)'}],
+  NIHILIST:     [{id:'key1',label:'Keyword'},{id:'key2',label:'Polybius key'},{id:'key3',label:'Block size or crib text (if CRIB type)'}],
+  PORTA:        [{id:'key1',label:'Keyword'},{id:'key3',label:'Block size or crib text (if CRIB type)'}],
+  AFFINE:       [{id:'key1',label:'a (must be coprime with 26)'},{id:'key2',label:'b'},{id:'key3',label:'Block size'},{id:'hint',label:'Hint / crib'}],
+  CHECKERBOARD: [{id:'key1',label:'H-key (5 letters)'},{id:'key2',label:'V-key (5 letters)'},{id:'key3',label:'Polybius keyword'},{id:'hint',label:'Crib (if CRIB type)'}],
+};
+
+function handlePlaintextInput(input) {
+  const cipher = document.getElementById('f-cipher').value;
+  // Show ñ button only for Xenocrypt
+  document.getElementById('nhtilde-btn').style.display = cipher === 'XENOCRYPT' ? 'inline-block' : 'none';
+  if (cipher !== 'XENOCRYPT') return;
+  // Strip accents except ñ/Ñ
+  const pos = input.selectionStart;
+  const original = input.value;
+  const cleaned = original.split('').map(c => {
+    if (c === 'ñ' || c === 'Ñ') return c;
+    // Decompose and strip combining marks
+    const decomposed = c.normalize('NFD');
+    const base = decomposed.replace(/[\u0300-\u036f]/g, '');
+    return base;
+  }).join('');
+  if (cleaned !== original) {
+    input.value = cleaned;
+    input.setSelectionRange(pos, pos);
+  }
+}
+
+function insertNTilde() {
+  const input = document.getElementById('f-plaintext');
+  const pos = input.selectionStart;
+  const val = input.value;
+  input.value = val.slice(0, pos) + 'ñ' + val.slice(pos);
+  input.setSelectionRange(pos + 1, pos + 1);
+  input.focus();
+}
+
+function onCipherChange() {
+  buildKeyFields();
+  onTypeChange();
+  const isXeno = document.getElementById('f-cipher').value === 'XENOCRYPT';
+  document.getElementById('nhtilde-btn').style.display = isXeno ? 'inline-block' : 'none';
+}
+
+function buildKeyFields() {
+  const cipher = document.getElementById('f-cipher').value;
+  const fields = CIPHER_FIELDS[cipher] || [];
+  const div = document.getElementById('key-hints');
+  div.innerHTML = '';
+  fields.forEach(f => {
+    const label = document.createElement('label');
+    label.textContent = f.label;
+    label.dataset.fieldId = f.id;
+    if (f.type === 'select') {
+      const sel = document.createElement('select');
+      sel.id = 'f-' + f.id;
+      f.opts.forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; sel.appendChild(opt); });
+      label.appendChild(sel);
+    } else {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.id = 'f-' + f.id;
+      label.appendChild(inp);
+    }
+    div.appendChild(label);
+  });
+}
+
+function onTypeChange() {
+  // Could show/hide fields based on type in future
+}
+
+function getField(id) {
+  const el = document.getElementById('f-' + id);
+  return el ? el.value.trim() : '';
+}
+
+// ── Add question ──────────────────────────────────────────────────────────────
+
+async function addQuestion() {
+  document.getElementById('form-error').textContent = '';
+  const cipher = getField('cipher');
+  const plaintext = getField('plaintext');
+  const value = getField('value') || 5;
+  const type = getField('type');
+  const bonus = document.getElementById('f-bonus').checked;
+
+  const payload = {
+    cipher, plaintext, value: parseInt(value), type, bonus,
+    key1: getField('key1'), key2: getField('key2'),
+    key3: getField('key3'), key4: getField('key4'),
+    hint_type: getField('hint_type'), hint: getField('hint'),
+  };
+
+  const btn = document.getElementById('add-btn');
+  btn.textContent = 'Generating...'; btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.success) {
+      document.getElementById('form-error').textContent = data.error;
+      return;
+    }
+
+    const label = `${cipher} [${value}pt]${bonus ? ' ★' : ''}`;
+    const sub = plaintext || payload.key1 || '(no plaintext)';
+    questions.push({
+      latex: data.latex, cipher, plaintext: sub, label, bonus,
+      answer: data.answer, answer_bold: data.answer_bold,
+      keyword: data.keyword || null,
+      payload: payload  // store original form data for editing
+    });
+    renderList();
+    previewDirty = true;
+    setStatus('Question added. Click Refresh Preview to update.');
+
+    // Auto-refresh if ≤10 questions
+    scheduleSave();
+    if (questions.length <= 10) refreshPreview();
+
+  } catch(e) {
+    document.getElementById('form-error').textContent = 'Network error: ' + e.message;
+  } finally {
+    btn.textContent = 'Add Question'; btn.disabled = false;
+    if (editingIndex < 0) resetForm();
+  }
+}
+
+// ── Question list ─────────────────────────────────────────────────────────────
+
+function renderList() {
+  const list = document.getElementById('question-list');
+  list.innerHTML = '';
+  questions.forEach((q, i) => {
+    const row = document.createElement('div');
+    row.className = 'q-row' + (editingIndex === i ? ' editing' : '');
+    row.draggable = editingIndex === -1;  // disable drag while editing
+    row.dataset.idx = i;
+    row.innerHTML = `
+      <span class="q-num">${i+1}.</span>
+      <div class="q-info" style="cursor:pointer" onclick="startEdit(${i})">
+        <div class="q-title">${q.label} ${q.bonus ? '<span class="q-bonus">BONUS</span>' : ''} <span style="font-size:10px;color:#888">(click to edit)</span></div>
+        <div class="q-sub">${escHtml(q.plaintext)}</div>
+      </div>
+      <span class="q-del" onclick="deleteQuestion(${i})">×</span>
+    `;
+    row.addEventListener('dragstart', e => { if (editingIndex >= 0) { e.preventDefault(); return; } e.dataTransfer.setData('text/plain', i); row.classList.add('dragging'); });
+    row.addEventListener('dragend', () => row.classList.remove('dragging'));
+    row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault(); row.classList.remove('drag-over');
+      const from = parseInt(e.dataTransfer.getData('text/plain'));
+      const to = parseInt(row.dataset.idx);
+      if (from === to) return;
+      const moved = questions.splice(from, 1)[0];
+      questions.splice(to, 0, moved);
+      renderList(); previewDirty = true; scheduleSave();
+      setStatus('Reordered. Click Refresh Preview to update.');
+    });
+    list.appendChild(row);
+  });
+  document.getElementById('list-count').textContent = `${questions.length} question${questions.length!==1?'s':''}`;
+}
+function startEdit(i) {
+  if (editingIndex === i) { cancelEdit(); return; }
+  editingIndex = i;
+  const q = questions[i];
+  const p = q.payload || {};
+
+  document.getElementById('f-cipher').value = p.cipher || q.cipher || 'ARISTOCRAT';
+  document.getElementById('f-type').value   = p.type   || 'DECODE';
+  buildKeyFields();
+
+  document.getElementById('f-value').value     = p.value    || '250';
+  document.getElementById('f-plaintext').value = p.plaintext || q.plaintext || '';
+  document.getElementById('f-bonus').checked   = p.bonus    || false;
+  ['key1','key2','key3','key4','hint_type','hint'].forEach(k => {
+    const el = document.getElementById('f-' + k);
+    if (el && p[k] !== undefined) el.value = p[k];
+  });
+
+  // Show ñ button if xenocrypt
+  document.getElementById('nhtilde-btn').style.display =
+    (p.cipher || q.cipher) === 'XENOCRYPT' ? 'inline-block' : 'none';
+
+  // Toggle buttons
+  document.getElementById('add-btn').style.display       = 'none';
+  document.getElementById('save-edit-btn').style.display = 'inline-block';
+  document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+
+  renderList();
+  document.getElementById('form-panel').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelEdit() {
+  editingIndex = -1;
+  document.getElementById('add-btn').style.display        = 'inline-block';
+  document.getElementById('save-edit-btn').style.display  = 'none';
+  document.getElementById('cancel-edit-btn').style.display = 'none';
+  resetForm();
+  renderList();
+}
+
+function resetForm() {
+  document.getElementById('f-plaintext').value = '';
+  document.getElementById('f-value').value = '250';
+  document.getElementById('f-bonus').checked = false;
+  document.getElementById('f-cipher').value = 'ARISTOCRAT';
+  document.getElementById('f-type').value = 'DECODE';
+  document.getElementById('nhtilde-btn').style.display = 'none';
+  document.getElementById('form-error').textContent = '';
+  buildKeyFields();
+}
+
+async function saveEdit() {
+  if (editingIndex < 0) return;
+  document.getElementById('form-error').textContent = '';
+  const cipher   = getField('cipher');
+  const plaintext = getField('plaintext');
+  const value    = getField('value') || 5;
+  const type     = getField('type');
+  const bonus    = document.getElementById('f-bonus').checked;
+  const payload  = {
+    cipher, plaintext, value: parseInt(value), type, bonus,
+    key1: getField('key1'), key2: getField('key2'),
+    key3: getField('key3'), key4: getField('key4'),
+    hint_type: getField('hint_type'), hint: getField('hint'),
+  };
+
+  const btn = document.getElementById('save-edit-btn');
+  btn.textContent = 'Regenerating...'; btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.success) {
+      document.getElementById('form-error').textContent = data.error;
+      return;
+    }
+    const label = `${cipher} [${value}pt]${bonus ? ' ★' : ''}`;
+    const sub   = plaintext || payload.key1 || '(no plaintext)';
+    questions[editingIndex] = {
+      latex: data.latex, cipher, plaintext: sub, label, bonus,
+      answer: data.answer, answer_bold: data.answer_bold,
+      keyword: data.keyword || null,
+      payload
+    };
+    cancelEdit();  // resets button and editingIndex
+    renderList(); previewDirty = true; scheduleSave();
+    setStatus('Question updated. Click Refresh Preview to update.');
+    if (questions.length <= 10) refreshPreview();
+  } catch(e) {
+    document.getElementById('form-error').textContent = 'Network error: ' + e.message;
+  } finally {
+    document.getElementById('save-edit-btn').disabled = false;
+    document.getElementById('save-edit-btn').textContent = 'Save Edit';
+  }
+}
+
+function deleteQuestion(i) {
+  questions.splice(i, 1);
+  renderList(); previewDirty = true; scheduleSave();
+  setStatus('Question deleted. Click Refresh Preview to update.');
+}
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+// Format a date input value (YYYY-MM-DD) to M/D/YYYY for display in the PDF
+function formatDateForPDF(val) {
+  if (!val) return '';
+  const [y, m, d] = val.split('-');
+  if (!y || !m || !d) return val;
+  return `${parseInt(m)}/${parseInt(d)}/${y}`;
+}
+
+function getSettings() {
+  const rawDate = document.getElementById('s-compdate').value;
+  return {
+    tournament:  document.getElementById('s-tournament').value,
+    division:    document.getElementById('s-division').value,
+    compdate:    formatDateForPDF(rawDate),
+    tqvalue:     document.getElementById('s-tqvalue').value,
+    tqphrase:    document.getElementById('s-tqphrase').value,
+    tqcipher:    document.getElementById('s-tqcipher').value,
+    writers:     document.getElementById('s-writers').value,
+    bonus_nums:  document.getElementById('s-bonus_nums').value,
+    cover_image: coverImageData,
+  };
+}
+let coverImageData = '';
+
+function coverImageChanged(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    coverImageData = e.target.result;
+    document.getElementById('s-cover-status').textContent = '✓ ' + file.name;
+    settingsChanged();
+  };
+  reader.readAsDataURL(file);
+}
+
+function settingsChanged() { previewDirty = true; scheduleSave(); }
+
+// ── Preview ───────────────────────────────────────────────────────────────────
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-test').className = 'tab' + (tab==='test' ? ' active' : '');
+  document.getElementById('tab-key').className  = 'tab' + (tab==='key'  ? ' active' : '');
+  refreshPreview();
+}
+
+function setStatus(msg) {
+  document.getElementById('preview-status').textContent = msg;
+}
+
+async function refreshPreview() {
+  if (questions.length === 0) {
+    setStatus('No questions yet.');
+    document.getElementById('preview-frame').style.display = 'none';
+    document.getElementById('preview-placeholder').style.display = 'flex';
+    return;
+  }
+  setStatus('Compiling PDF…');
+  document.getElementById('preview-frame').style.display = 'none';
+  document.getElementById('preview-placeholder').style.display = 'flex';
+  document.getElementById('preview-placeholder').textContent = 'Compiling PDF…';
+
+  try {
+    const res = await fetch('/api/preview', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        settings: getSettings(),
+        questions: questions,
+        is_key: activeTab === 'key'
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      setStatus('Error: ' + (err.error || 'compile failed'));
+      document.getElementById('preview-placeholder').textContent = 'Compile error — check terminal for LaTeX log.';
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const frame = document.getElementById('preview-frame');
+    frame.src = url + '#toolbar=1&navpanes=0';
+    frame.style.display = 'block';
+    document.getElementById('preview-placeholder').style.display = 'none';
+    setStatus(`Showing ${activeTab === 'key' ? 'answer key' : 'test'} — ${questions.length} question(s)`);
+    previewDirty = false;
+  } catch(e) {
+    setStatus('Network error: ' + e.message);
+    document.getElementById('preview-placeholder').textContent = 'Error: ' + e.message;
+  }
+}
+
+async function downloadPDF(isKey) {
+  if (questions.length === 0) { alert('Add at least one question first.'); return; }
+  setStatus('Preparing download…');
+  const res = await fetch('/api/download', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ settings: getSettings(), questions, is_key: isKey })
+  });
+  if (!res.ok) { setStatus('Download failed.'); return; }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = isKey ? 'key.pdf' : 'test.pdf';
+  a.click(); URL.revokeObjectURL(url);
+  setStatus('Downloaded.');
+}
+
+function clearAll() {
+  if (questions.length && !confirm('Clear all questions?')) return;
+  questions = []; renderList(); previewDirty = false;
+  document.getElementById('preview-frame').style.display = 'none';
+  document.getElementById('preview-placeholder').style.display = 'flex';
+  document.getElementById('preview-placeholder').textContent = 'Add at least one question, then click Refresh Preview.';
+  setStatus('Cleared.');
+}
+
+// ── Profile / test state ─────────────────────────────────────────────────────
+let currentProfile = JSON.parse(sessionStorage.getItem('profile') || 'null');
+let currentTestId  = sessionStorage.getItem('testId') || null;
+let saveTimer = null;
+
+function goHome() { window.location.href = window.location.protocol + '//' + window.location.host + '/'; }
+
+async function loadTestData() {
+  if (!currentProfile || !currentTestId) return;
+  const res = await fetch('/api/tests/' + currentTestId);  const t = await res.json();
+  if (t.error) return;
+  document.getElementById('test-title').textContent = t.name;
+  // Restore settings
+  const s = t.settings || {};
+  // Restore simple text inputs
+  ['tournament','tqvalue','tqphrase','tqcipher','writers','bonus_nums'].forEach(k => {
+    const el = document.getElementById('s-' + k);
+    if (el && s[k] !== undefined) el.value = s[k];
+  });
+  // Restore division dropdown
+  if (s.division) {
+    const divEl = document.getElementById('s-division');
+    if (divEl) divEl.value = s.division;
+  }
+  // Restore date: convert M/D/YYYY back to YYYY-MM-DD for the date input
+  if (s.compdate) {
+    const parts = s.compdate.split('/');
+    if (parts.length === 3) {
+      const [m, d, y] = parts;
+      document.getElementById('s-compdate').value =
+        `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    } else {
+      document.getElementById('s-compdate').value = s.compdate;
+    }
+  }
+  coverImageData = s.cover_image || '';
+  if (coverImageData) document.getElementById('s-cover-status').textContent = '✓ (saved image)';
+  // Restore questions
+  questions = t.questions || [];
+  renderList();
+  if (questions.length > 0) setStatus('Test loaded. Click Refresh Preview to view.');
+}
+
+async function autosave() {
+  if (!currentProfile || !currentTestId) return;
+  document.getElementById('save-status').textContent = 'Saving...';
+  await fetch('/api/tests/' + currentTestId, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ settings: getSettings(), questions: questions })
+  });
+  document.getElementById('save-status').textContent = 'Saved ✓';
+  setTimeout(() => { document.getElementById('save-status').textContent = ''; }, 2000);
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(autosave, 1200);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+buildKeyFields();
+loadTestData();
+</script>
+</body>
+</html>
