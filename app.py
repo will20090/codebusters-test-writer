@@ -16,6 +16,7 @@ BASE = os.path.dirname(__file__)
 
 def get_db():
     conn = psycopg2.connect(os.environ['DATABASE_URL'], sslmode='require')
+    conn.autocommit = True
     return conn
 
 def init_db():
@@ -78,7 +79,11 @@ def register():
         'INSERT INTO users (id, username, password, created) VALUES (%s, %s, %s, %s)',
         (uid, username, generate_password_hash(password), datetime.datetime.now().isoformat())
     )
-    conn.commit(); cur.close(); conn.close()
+    try:
+        conn.commit()
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    cur.close(); conn.close()
     session['uid'] = uid
     session['username'] = username
     return jsonify({'ok': True, 'username': username})
@@ -635,6 +640,11 @@ def home():
 def builder():
     return render_template('builder.html')
 
+init_db()
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
+
 @app.route('/api/dbtest')
 def dbtest():
     try:
@@ -646,8 +656,4 @@ def dbtest():
         conn.close()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)})
-
-if __name__ == '__main__':
-    init_db()
-    app.run(debug=True, port=5000)
+        return jsonify({'error': str(e)}) 
