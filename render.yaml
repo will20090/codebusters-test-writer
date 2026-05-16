@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: codebusters-test-writer
+    runtime: python
+    buildCommand: apt-get install -y texlive-full && pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT

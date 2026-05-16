@@ -611,14 +611,14 @@ function clearAll() {
 }
 
 // ── Profile / test state ─────────────────────────────────────────────────────
-let currentProfile = JSON.parse(sessionStorage.getItem('profile') || 'null');
+
 let currentTestId  = sessionStorage.getItem('testId') || null;
 let saveTimer = null;
 
 function goHome() { window.location.href = window.location.protocol + '//' + window.location.host + '/'; }
 
 async function loadTestData() {
-  if (!currentProfile || !currentTestId) return;
+  if (!currentTestId) return;
   const res = await fetch('/api/tests/' + currentTestId);  const t = await res.json();
   if (t.error) return;
   document.getElementById('test-title').textContent = t.name;
@@ -654,7 +654,7 @@ async function loadTestData() {
 }
 
 async function autosave() {
-  if (!currentProfile || !currentTestId) return;
+  if (!currentTestId) return;
   document.getElementById('save-status').textContent = 'Saving...';
   await fetch('/api/tests/' + currentTestId, {
     method: 'PUT',
