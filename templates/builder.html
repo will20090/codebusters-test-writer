@@ -89,9 +89,10 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 
       <!-- Settings -->
       <div id="settings-grid">
-            <label>Tournament Name<input id="s-tournament" value="My Tournament" oninput="settingsChanged()"></label>
+            <label>Tournament Name<input id="s-tournament" value="" placeholder="XXX Tournament" oninput="settingsChanged()"></label>
             <label>Division
               <select id="s-division" onchange="settingsChanged()">
+                <option value="" disabled selected>Select Division</option>
                 <option value="B">B</option>
                 <option value="C">C</option>
               </select>
@@ -138,6 +139,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
               <option value="CRIB">Crib</option>
               <option value="WORDS">Words</option>
               <option value="LETTERS">Letters</option>
+              <option value="RANDOM_LETTERS">Random Letters</option>
               <option value="SEQUENCE">Sequence</option>
               <option value="EXTRACT">Extract</option>
             </select>
@@ -310,7 +312,7 @@ const CIPHER_TYPES = {
   ARISTOCRAT:   ['DECODE','EXTRACT'],
   PATRISTOCRAT: ['DECODE','EXTRACT'],
   XENOCRYPT:    ['DECODE','EXTRACT'],
-  BACONIAN:     ['LETTERS','SEQUENCE','WORDS'],
+  BACONIAN:     ['LETTERS','RANDOM_LETTERS','SEQUENCE','WORDS'],
   FRACMORSE:    ['DECODE','CRIB'],
   CRYPTARITHM:  ['DECODE'],
   PORTA:        ['DECODE','CRIB'],
@@ -326,7 +328,7 @@ const CIPHER_TYPES = {
 const TYPE_LABELS = {
   DECODE: 'Decode', CRIB: 'Crib', EXTRACT: 'Extract',
   WORDS: 'Words', LETTERS: 'Letters',
-  SEQUENCE: 'Sequence',
+  RANDOM_LETTERS: 'Random Letters', SEQUENCE: 'Sequence',
 };
 
 function onTypeChange() {
@@ -424,11 +426,15 @@ async function addQuestion() {
 
     const label = `${cipher} [${value}pt]${bonus ? ' ★' : ''}`;
     const sub = plaintext || payload.key1 || '(no plaintext)';
+    // Extract auto-generated question text from latex
+    const qtextMatch = data.latex.match(/\\question(?:\[\d+\])?\s*(.*?)(?=\n|\\)/s);
+    const autoQtext = qtextMatch ? qtextMatch[1].trim() : '';
     questions.push({
       latex: data.latex, cipher, plaintext: sub, label, bonus,
       answer: data.answer, answer_bold: data.answer_bold,
       keyword: data.keyword || null,
-      payload: payload  // store original form data for editing
+      payload: payload,
+      qtext: autoQtext,  // editable question text
     });
     renderList();
     previewDirty = true;
@@ -456,6 +462,33 @@ function updateBonusNums() {
   if (el) el.value = bonusNums.length ? bonusNums.join(', ') : 'None';
 }
 
+async function regenerateQtext(i) {
+  const q = questions[i];
+  if (!q || !q.payload) return;
+  const btn = event.target;
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(q.payload)
+    });
+    const data = await res.json();
+    if (!data.success) { alert('Error: ' + data.error); return; }
+    const qtextMatch = data.latex.match(/\\question(?:\[\d+\])?\s*(.*?)(?=\n|\\)/s);
+    const autoQtext = qtextMatch ? qtextMatch[1].trim() : '';
+    q.latex = data.latex;
+    q.qtext = autoQtext;
+    const ta = document.getElementById('qtext-' + i);
+    if (ta) ta.value = autoQtext;
+    scheduleSave();
+    setStatus('Question text regenerated.');
+  } catch(e) {
+    alert('Network error: ' + e.message);
+  } finally {
+    btn.textContent = '⟳ Regenerate'; btn.disabled = false;
+  }
+}
+
 function renderList() {
   const list = document.getElementById('question-list');
   list.innerHTML = '';
@@ -471,6 +504,14 @@ function renderList() {
         <div class="q-sub">${escHtml(q.plaintext)}</div>
       </div>
       <span class="q-del" onclick="deleteQuestion(${i})">×</span>
+      ${editingIndex === i ? `
+      <div class="qtext-editor" style="width:100%;margin-top:8px;padding:8px;background:#f8f8f8;border:1px solid #ddd;grid-column:1/-1;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:11px;font-weight:bold;color:#555;">Question Text (shown before cipher)</span>
+          <button onclick="regenerateQtext(${i})" style="font-family:monospace;font-size:11px;padding:2px 8px;border:1px solid #ccc;background:#fff;cursor:pointer;">⟳ Regenerate</button>
+        </div>
+        <textarea id="qtext-${i}" style="width:100%;height:60px;font-family:monospace;font-size:12px;border:1px solid #ccc;padding:4px;resize:vertical;" onchange="questions[${i}].qtext=this.value;scheduleSave();">${escHtml(q.qtext||'')}</textarea>
+      </div>` : ''}
     `;
     row.addEventListener('dragstart', e => { if (editingIndex >= 0) { e.preventDefault(); return; } e.dataTransfer.setData('text/plain', i); row.classList.add('dragging'); });
     row.addEventListener('dragend', () => row.classList.remove('dragging'));
@@ -513,6 +554,8 @@ function startEdit(i) {
   document.getElementById('nhtilde-btn').style.display =
     (p.cipher || q.cipher) === 'XENOCRYPT' ? 'inline-block' : 'none';
 
+  // qtext is rendered in renderList inline, no separate field needed
+
   // Toggle buttons
   document.getElementById('add-btn').style.display       = 'none';
   document.getElementById('save-edit-btn').style.display = 'inline-block';
@@ -543,6 +586,11 @@ function resetForm() {
 }
 
 async function saveEdit() {
+  // Save qtext from textarea if open
+  const qtextEl = document.getElementById('qtext-' + editingIndex);
+  if (qtextEl && editingIndex >= 0) {
+    questions[editingIndex].qtext = qtextEl.value;
+  }
   if (editingIndex < 0) return;
   document.getElementById('form-error').textContent = '';
   const cipher   = getField('cipher');
