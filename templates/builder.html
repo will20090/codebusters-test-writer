@@ -208,7 +208,7 @@ const CIPHER_FIELDS = {
   BACONIAN:     [{id:'key1',label:'A-letters (e.g. AEIOU or 134)'},{id:'key2',label:'B-letters (e.g. BCDF or 689)'},{id:'key3',label:'Crib (WORDS type) / block len'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Letters']},{id:'hint',label:'Hint text'}],
   CAESAR:       [{id:'key1',label:'Shift (integer)'}],
   COLUMNAR:     [{id:'key1',label:'Columns (integer)'},{id:'key2',label:'Crib word'}],
-  CRYPTARITHM:  [{id:'key1',label:'Problem text (full block)'},{id:'key2',label:'Solution numbers (space-sep)'},{id:'key3',label:'Operation label'}],
+  CRYPTARITHM:  [{id:'key3',label:'Operation',type:'select',opts:['Addition','Subtraction','Multiplication','Other']},{id:'key2',label:'Solution numbers (space-separated, e.g. 123 456 789)'},{id:'key1',label:'Problem text (verbatim — auto-filled from template, edit as needed)',type:'textarea'}],
   FRACMORSE:    [{id:'key1',label:'Keyword'},{id:'key2',label:'Crib'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Start Crib','Middle Crib','End Crib']},{id:'hint',label:'Manual hint (auto-generated if blank)'}],
   HILL:         [{id:'key1',label:'Keyword (4 or 9 letters)'}],
   NIHILIST:     [{id:'key1',label:'Keyword'},{id:'key2',label:'Polybius key'},{id:'key3',label:'Block size or crib text (if CRIB type)'}],
@@ -250,8 +250,29 @@ function insertNTilde() {
 function onCipherChange() {
   buildKeyFields();
   onTypeChange();
-  const isXeno = document.getElementById('f-cipher').value === 'XENOCRYPT';
+  const cipher = document.getElementById('f-cipher').value;
+  const isXeno = cipher === 'XENOCRYPT';
   document.getElementById('nhtilde-btn').style.display = isXeno ? 'inline-block' : 'none';
+  const ptRow = document.getElementById('f-plaintext').closest('label');
+  if (cipher === 'CRYPTARITHM') {
+    if (ptRow) ptRow.style.display = 'none';
+    // Show fill template button
+    let btn = document.getElementById('crypto-template-btn');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'crypto-template-btn';
+      btn.type = 'button';
+      btn.textContent = '⟳ Fill Template';
+      btn.style.cssText = 'margin-top:4px;margin-right:8px;padding:3px 10px;font-family:monospace;font-size:12px;border:1px solid #ccc;background:#f8f8f8;cursor:pointer;';
+      btn.onclick = fillCryptarithmTemplate;
+      document.getElementById('key-hints').after(btn);
+    }
+    fillCryptarithmTemplate();
+  } else {
+    if (ptRow) ptRow.style.display = '';
+    const btn = document.getElementById('crypto-template-btn');
+    if (btn) btn.remove();
+  }
 }
 
 function buildKeyFields() {
@@ -267,7 +288,14 @@ function buildKeyFields() {
       const sel = document.createElement('select');
       sel.id = 'f-' + f.id;
       f.opts.forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; sel.appendChild(opt); });
+      if (f.id === 'key3') sel.onchange = onCryptarithmOpChange;
       label.appendChild(sel);
+    } else if (f.type === 'textarea') {
+      const ta = document.createElement('textarea');
+      ta.id = 'f-' + f.id;
+      ta.style.cssText = 'font-family:monospace;font-size:12px;border:1px solid #ccc;padding:3px 5px;width:100%;height:80px;resize:vertical;';
+      label.appendChild(ta);
+      label.style.gridColumn = 'span 4';
     } else {
       const inp = document.createElement('input');
       inp.type = 'text';
@@ -282,9 +310,39 @@ function onTypeChange() {
   // Could show/hide fields based on type in future
 }
 
+function onCryptarithmOpChange() {
+  const op = document.getElementById('f-key3') ? document.getElementById('f-key3').value : '';
+  const ta = document.getElementById('f-key1');
+  if (!ta) return;
+  if (ta.value.trim() !== '') return; // don't overwrite if already filled
+  const templates = {
+    'Addition':       '    WORD1\n+   WORD2\n---------\n   RESULT',
+    'Subtraction':    '  NUMBER\n- WORD\n---------\n   SMALL',
+    'Multiplication': '    TEXAS\nx     BED\n---------\n   MTIESS\n   DAMSS\n ERDAAS\n---------\n MISTRESS',
+    'Other':          '(enter your cryptarithm here)',
+  };
+  ta.value = templates[op] || '';
+}
+
+function fillCryptarithmTemplate() {
+  const ta = document.getElementById('f-key1');
+  if (!ta) return;
+  const op = document.getElementById('f-key3') ? document.getElementById('f-key3').value : 'Addition';
+  const templates = {
+    'Addition':       '    WORD1\n+   WORD2\n---------\n   RESULT',
+    'Subtraction':    '  NUMBER\n- WORD\n---------\n   SMALL',
+    'Multiplication': '    TEXAS\nx     BED\n---------\n   MTIESS\n   DAMSS\n ERDAAS\n---------\n MISTRESS',
+    'Other':          '(enter your cryptarithm here)',
+  };
+  ta.value = templates[op] || '';
+}
+
 function getField(id) {
   const el = document.getElementById('f-' + id);
-  return el ? el.value.trim() : '';
+  if (!el) return '';
+  // Don't trim textarea (preserves newlines/spacing for cryptarithm)
+  if (el.tagName === 'TEXTAREA') return el.value;
+  return el.value.trim();
 }
 
 // ── Add question ──────────────────────────────────────────────────────────────
@@ -611,14 +669,14 @@ function clearAll() {
 }
 
 // ── Profile / test state ─────────────────────────────────────────────────────
-
+let currentProfile = JSON.parse(sessionStorage.getItem('profile') || 'null');
 let currentTestId  = sessionStorage.getItem('testId') || null;
 let saveTimer = null;
 
-function goHome() { window.location.href = window.location.protocol + '//' + window.location.host + '/'; }
+function goHome() { window.location.href = '/'; }
 
 async function loadTestData() {
-  if (!currentTestId) return;
+  if (!currentProfile || !currentTestId) return;
   const res = await fetch('/api/tests/' + currentTestId);  const t = await res.json();
   if (t.error) return;
   document.getElementById('test-title').textContent = t.name;
@@ -654,7 +712,7 @@ async function loadTestData() {
 }
 
 async function autosave() {
-  if (!currentTestId) return;
+  if (!currentProfile || !currentTestId) return;
   document.getElementById('save-status').textContent = 'Saving...';
   await fetch('/api/tests/' + currentTestId, {
     method: 'PUT',
