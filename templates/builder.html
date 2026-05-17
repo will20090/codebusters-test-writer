@@ -7,7 +7,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222; }
 
-/* ── Layout ── */
+/* -- Layout -- */
 #app { display: flex; flex-direction: column; height: 100vh; }
 #top-bar { background: #222; color: #eee; padding: 8px 16px; display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
 #top-bar h1 { font-size: 15px; letter-spacing: 1px; }
@@ -15,7 +15,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 #top-bar button:hover { background: #555; }
 #main { display: flex; flex: 1; overflow: hidden; }
 
-/* ── Left panel ── */
+/* -- Left panel -- */
 #left { width: 55%; display: flex; flex-direction: column; border-right: 1px solid #ccc; overflow: hidden; }
 
 /* Settings */
@@ -56,7 +56,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 .q-del:hover { color: #c00; }
 .q-bonus { color: #e8a000; font-size: 10px; font-weight: bold; }
 
-/* ── Right panel (preview) ── */
+/* -- Right panel (preview) -- */
 #right { flex: 1; display: flex; flex-direction: column; }
 #preview-tabs { background: #e0e0e0; display: flex; border-bottom: 1px solid #ccc; }
 .tab { padding: 7px 18px; cursor: pointer; font-family: monospace; font-size: 13px; border-right: 1px solid #ccc; }
@@ -163,6 +163,15 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
         <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;">
           <input type="checkbox" id="f-bonus"> Bonus question
         </label>
+
+        <div style="margin-top:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-size:11px;font-weight:bold;color:#555;">Question Text <span style="font-weight:normal;color:#888;">(auto-filled after generating  -  edit for flavor text)</span></span>
+            <button type="button" id="regen-qtext-btn" onclick="regenQtextFromForm()" style="font-family:monospace;font-size:11px;padding:2px 10px;border:1px solid #ccc;background:#f8f8f8;cursor:pointer;">⟳ Regenerate</button>
+          </div>
+          <textarea id="f-qtext" style="width:100%;height:70px;font-family:monospace;font-size:12px;border:1px solid #ccc;padding:4px;resize:vertical;" placeholder="Generate a question first to populate this field..."></textarea>
+        </div>
+
         <div id="form-error"></div>
         <button id="add-btn" onclick="addQuestion()">Add Question</button>
         <button id="save-edit-btn" style="display:none;margin-top:8px;margin-left:8px;background:#222;color:#fff;border:none;padding:6px 14px;cursor:pointer;font-family:monospace;font-size:13px;" onclick="saveEdit()">Save Edit</button>
@@ -193,15 +202,16 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
   </div>
 </div>
 
-<script>
-// ── State ─────────────────────────────────────────────────────────────────────
+<script charset="utf-8">
+
+// -- State --
 
 let questions = [];
 let activeTab = 'test';
 let previewDirty = false;
 let editingIndex = -1;  // -1 = adding new, >=0 = editing existing
 
-// ── Cipher field definitions ──────────────────────────────────────────────────
+// -- Cipher field definitions --
 
 const CIPHER_FIELDS = {
   ARISTOCRAT:   [{id:'key1',label:'Keyword (blank=random)'},{id:'key2',label:'Shift'},{id:'key3',label:'Alph type (K1/K2/K3/blank)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},{id:'hint',label:'Hint text'}],
@@ -211,7 +221,7 @@ const CIPHER_FIELDS = {
   BACONIAN:     [{id:'key1',label:'A-letters (e.g. AEIOU or 134)'},{id:'key2',label:'B-letters (e.g. BCDF or 689)'},{id:'key3',label:'Crib (WORDS type) / block len'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Letters']},{id:'hint',label:'Hint text'}],
   CAESAR:       [{id:'key1',label:'Shift (integer)'}],
   COLUMNAR:     [{id:'key1',label:'Columns (integer)'},{id:'key2',label:'Crib word'}],
-  CRYPTARITHM:  [{id:'key3',label:'Operation',type:'select',opts:['Addition','Subtraction','Multiplication','Other']},{id:'key2',label:'Solution numbers (space-separated, e.g. 123 456 789)'},{id:'key1',label:'Problem text (verbatim — auto-filled from template, edit as needed)',type:'textarea'}],
+  CRYPTARITHM:  [{id:'key3',label:'Operation',type:'select',opts:['Addition','Subtraction','Multiplication','Other']},{id:'key2',label:'Solution numbers (space-separated, e.g. 123 456 789)'},{id:'key1',label:'Problem text (verbatim - auto-filled from template, edit as needed)',type:'textarea'}],
   FRACMORSE:    [{id:'key1',label:'Keyword'},{id:'key2',label:'Crib'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Start Crib','Middle Crib','End Crib']},{id:'hint',label:'Manual hint (auto-generated if blank)'}],
   HILL:         [{id:'key1',label:'Keyword (4 or 9 letters)'}],
   NIHILIST:     [{id:'key1',label:'Keyword'},{id:'key2',label:'Polybius key'},{id:'key3',label:'Block size or crib text (if CRIB type)'}],
@@ -264,7 +274,7 @@ function onCipherChange() {
       btn = document.createElement('button');
       btn.id = 'crypto-template-btn';
       btn.type = 'button';
-      btn.textContent = '⟳ Fill Template';
+      btn.textContent = '[regen] Fill Template';
       btn.style.cssText = 'margin-top:4px;margin-right:8px;padding:3px 10px;font-family:monospace;font-size:12px;border:1px solid #ccc;background:#f8f8f8;cursor:pointer;';
       btn.onclick = fillCryptarithmTemplate;
       document.getElementById('key-hints').after(btn);
@@ -389,7 +399,45 @@ function getField(id) {
   return el.value.trim();
 }
 
-// ── Add question ──────────────────────────────────────────────────────────────
+// -- Add question --
+
+function extractQtext(latex) {
+  // Match from \question[N] or \question to end of that logical line
+  const m = latex.match(/\\question(?:\[\d+\])?\s+([\s\S]*?)(?=\n\\parskip|\n\\Large|\n\\begin|\n\\vfill|\n\n)/);
+  return m ? m[1].trim() : '';
+}
+
+async function regenQtextFromForm() {
+  const cipher = getField('cipher');
+  const plaintext = getField('plaintext');
+  const value = getField('value') || 5;
+  const type = getField('type');
+  const bonus = document.getElementById('f-bonus').checked;
+  const rawOp = getField('key3');
+  const customOp = (document.getElementById('crypto-custom-op') || {}).value || '';
+  const resolvedOp = (rawOp === 'Other' && customOp) ? customOp : rawOp;
+  const payload = {
+    cipher, plaintext, value: parseInt(value), type, bonus,
+    key1: getField('key1'), key2: getField('key2'),
+    key3: resolvedOp, key4: getField('key4'),
+    hint_type: getField('hint_type'), hint: getField('hint'),
+  };
+  const btn = document.getElementById('regen-qtext-btn');
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.success) { document.getElementById('form-error').textContent = data.error; return; }
+    document.getElementById('f-qtext').value = extractQtext(data.latex);
+  } catch(e) {
+    document.getElementById('form-error').textContent = 'Network error: ' + e.message;
+  } finally {
+    btn.textContent = '[regen] Regenerate'; btn.disabled = false;
+  }
+}
 
 async function addQuestion() {
   document.getElementById('form-error').textContent = '';
@@ -424,23 +472,25 @@ async function addQuestion() {
       return;
     }
 
-    const label = `${cipher} [${value}pt]${bonus ? ' ★' : ''}`;
+    const label = `${cipher} [${value}pt]${bonus ? ' *' : ''}`;
     const sub = plaintext || payload.key1 || '(no plaintext)';
-    // Extract auto-generated question text from latex
-    const qtextMatch = data.latex.match(/\\question(?:\[\d+\])?\s*(.*?)(?=\n|\\)/s);
-    const autoQtext = qtextMatch ? qtextMatch[1].trim() : '';
+    // Use whatever is in the qtext field (user may have edited it), fall back to extracted
+    const formQtext = document.getElementById('f-qtext').value.trim();
+    const autoQtext = formQtext || extractQtext(data.latex);
+    // Also populate the field if it was empty
+    if (!formQtext) document.getElementById('f-qtext').value = autoQtext;
     questions.push({
       latex: data.latex, cipher, plaintext: sub, label, bonus,
       answer: data.answer, answer_bold: data.answer_bold,
       keyword: data.keyword || null,
       payload: payload,
-      qtext: autoQtext,  // editable question text
+      qtext: autoQtext,
     });
     renderList();
     previewDirty = true;
     setStatus('Question added. Click Refresh Preview to update.');
 
-    // Auto-refresh if ≤10 questions
+    // Auto-refresh if <=10 questions
     scheduleSave();
     if (questions.length <= 10) refreshPreview();
 
@@ -452,7 +502,7 @@ async function addQuestion() {
   }
 }
 
-// ── Question list ─────────────────────────────────────────────────────────────
+// -- Question list --
 
 function updateBonusNums() {
   const bonusNums = questions
@@ -460,33 +510,6 @@ function updateBonusNums() {
     .filter(n => n !== null);
   const el = document.getElementById('s-bonus_nums');
   if (el) el.value = bonusNums.length ? bonusNums.join(', ') : 'None';
-}
-
-async function regenerateQtext(i) {
-  const q = questions[i];
-  if (!q || !q.payload) return;
-  const btn = event.target;
-  btn.textContent = '...'; btn.disabled = true;
-  try {
-    const res = await fetch('/api/generate', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(q.payload)
-    });
-    const data = await res.json();
-    if (!data.success) { alert('Error: ' + data.error); return; }
-    const qtextMatch = data.latex.match(/\\question(?:\[\d+\])?\s*(.*?)(?=\n|\\)/s);
-    const autoQtext = qtextMatch ? qtextMatch[1].trim() : '';
-    q.latex = data.latex;
-    q.qtext = autoQtext;
-    const ta = document.getElementById('qtext-' + i);
-    if (ta) ta.value = autoQtext;
-    scheduleSave();
-    setStatus('Question text regenerated.');
-  } catch(e) {
-    alert('Network error: ' + e.message);
-  } finally {
-    btn.textContent = '⟳ Regenerate'; btn.disabled = false;
-  }
 }
 
 function renderList() {
@@ -503,15 +526,8 @@ function renderList() {
         <div class="q-title">${q.label} ${q.bonus ? '<span class="q-bonus">BONUS</span>' : ''} <span style="font-size:10px;color:#888">(click to edit)</span></div>
         <div class="q-sub">${escHtml(q.plaintext)}</div>
       </div>
-      <span class="q-del" onclick="deleteQuestion(${i})">×</span>
-      ${editingIndex === i ? `
-      <div class="qtext-editor" style="width:100%;margin-top:8px;padding:8px;background:#f8f8f8;border:1px solid #ddd;grid-column:1/-1;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-          <span style="font-size:11px;font-weight:bold;color:#555;">Question Text (shown before cipher)</span>
-          <button onclick="regenerateQtext(${i})" style="font-family:monospace;font-size:11px;padding:2px 8px;border:1px solid #ccc;background:#fff;cursor:pointer;">⟳ Regenerate</button>
-        </div>
-        <textarea id="qtext-${i}" style="width:100%;height:60px;font-family:monospace;font-size:12px;border:1px solid #ccc;padding:4px;resize:vertical;" onchange="questions[${i}].qtext=this.value;scheduleSave();">${escHtml(q.qtext||'')}</textarea>
-      </div>` : ''}
+      <span class="q-del" onclick="deleteQuestion(${i})">x</span>
+
     `;
     row.addEventListener('dragstart', e => { if (editingIndex >= 0) { e.preventDefault(); return; } e.dataTransfer.setData('text/plain', i); row.classList.add('dragging'); });
     row.addEventListener('dragend', () => row.classList.remove('dragging'));
@@ -554,7 +570,8 @@ function startEdit(i) {
   document.getElementById('nhtilde-btn').style.display =
     (p.cipher || q.cipher) === 'XENOCRYPT' ? 'inline-block' : 'none';
 
-  // qtext is rendered in renderList inline, no separate field needed
+  // Populate qtext field
+  document.getElementById('f-qtext').value = q.qtext || '';
 
   // Toggle buttons
   document.getElementById('add-btn').style.display       = 'none';
@@ -579,6 +596,7 @@ function resetForm() {
   document.getElementById('f-value').value = '250';
   document.getElementById('f-bonus').checked = false;
   document.getElementById('f-cipher').value = 'ARISTOCRAT';
+  document.getElementById('f-qtext').value = '';
   document.getElementById('f-type').value = 'DECODE';
   document.getElementById('nhtilde-btn').style.display = 'none';
   document.getElementById('form-error').textContent = '';
@@ -586,10 +604,9 @@ function resetForm() {
 }
 
 async function saveEdit() {
-  // Save qtext from textarea if open
-  const qtextEl = document.getElementById('qtext-' + editingIndex);
-  if (qtextEl && editingIndex >= 0) {
-    questions[editingIndex].qtext = qtextEl.value;
+  // Save qtext from form field
+  if (editingIndex >= 0) {
+    questions[editingIndex].qtext = document.getElementById('f-qtext').value.trim();
   }
   if (editingIndex < 0) return;
   document.getElementById('form-error').textContent = '';
@@ -619,7 +636,7 @@ async function saveEdit() {
       document.getElementById('form-error').textContent = data.error;
       return;
     }
-    const label = `${cipher} [${value}pt]${bonus ? ' ★' : ''}`;
+    const label = `${cipher} [${value}pt]${bonus ? ' *' : ''}`;
     const sub   = plaintext || payload.key1 || '(no plaintext)';
     questions[editingIndex] = {
       latex: data.latex, cipher, plaintext: sub, label, bonus,
@@ -649,7 +666,7 @@ function escHtml(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ── Settings ──────────────────────────────────────────────────────────────────
+// -- Settings --
 
 // Format a date input value (YYYY-MM-DD) to M/D/YYYY for display in the PDF
 function formatDateForPDF(val) {
@@ -681,7 +698,7 @@ function coverImageChanged(input) {
   const reader = new FileReader();
   reader.onload = e => {
     coverImageData = e.target.result;
-    document.getElementById('s-cover-status').textContent = '✓ ' + file.name;
+    document.getElementById('s-cover-status').textContent = 'v ' + file.name;
     settingsChanged();
   };
   reader.readAsDataURL(file);
@@ -689,7 +706,7 @@ function coverImageChanged(input) {
 
 function settingsChanged() { previewDirty = true; scheduleSave(); }
 
-// ── Preview ───────────────────────────────────────────────────────────────────
+// -- Preview --
 
 function switchTab(tab) {
   activeTab = tab;
@@ -709,10 +726,10 @@ async function refreshPreview() {
     document.getElementById('preview-placeholder').style.display = 'flex';
     return;
   }
-  setStatus('Compiling PDF…');
+  setStatus('Compiling PDF...');
   document.getElementById('preview-frame').style.display = 'none';
   document.getElementById('preview-placeholder').style.display = 'flex';
-  document.getElementById('preview-placeholder').textContent = 'Compiling PDF…';
+  document.getElementById('preview-placeholder').textContent = 'Compiling PDF...';
 
   try {
     const res = await fetch('/api/preview', {
@@ -727,7 +744,7 @@ async function refreshPreview() {
     if (!res.ok) {
       const err = await res.json();
       setStatus('Error: ' + (err.error || 'compile failed'));
-      document.getElementById('preview-placeholder').textContent = 'Compile error — check terminal for LaTeX log.';
+      document.getElementById('preview-placeholder').textContent = 'Compile error  -  check terminal for LaTeX log.';
       return;
     }
     const blob = await res.blob();
@@ -736,7 +753,7 @@ async function refreshPreview() {
     frame.src = url + '#toolbar=1&navpanes=0';
     frame.style.display = 'block';
     document.getElementById('preview-placeholder').style.display = 'none';
-    setStatus(`Showing ${activeTab === 'key' ? 'answer key' : 'test'} — ${questions.length} question(s)`);
+    setStatus(`Showing ${activeTab === 'key' ? 'answer key' : 'test'}  -  ${questions.length} question(s)`);
     previewDirty = false;
   } catch(e) {
     setStatus('Network error: ' + e.message);
@@ -746,7 +763,7 @@ async function refreshPreview() {
 
 async function downloadPDF(isKey) {
   if (questions.length === 0) { alert('Add at least one question first.'); return; }
-  setStatus('Preparing download…');
+  setStatus('Preparing download...');
   const res = await fetch('/api/download', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -770,7 +787,7 @@ function clearAll() {
   setStatus('Cleared.');
 }
 
-// ── Profile / test state ─────────────────────────────────────────────────────
+// -- Profile / test state --
 let currentTestId  = sessionStorage.getItem('testId') || null;
 let saveTimer = null;
 
@@ -805,7 +822,7 @@ async function loadTestData() {
     }
   }
   coverImageData = s.cover_image || '';
-  if (coverImageData) document.getElementById('s-cover-status').textContent = '✓ (saved image)';
+  if (coverImageData) document.getElementById('s-cover-status').textContent = 'v (saved image)';
   // Restore questions
   questions = t.questions || [];
   renderList();
@@ -820,7 +837,7 @@ async function autosave() {
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ settings: getSettings(), questions: questions })
   });
-  document.getElementById('save-status').textContent = 'Saved ✓';
+  document.getElementById('save-status').textContent = 'Saved v';
   setTimeout(() => { document.getElementById('save-status').textContent = ''; }, 2000);
 }
 
@@ -829,11 +846,12 @@ function scheduleSave() {
   saveTimer = setTimeout(autosave, 1200);
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// -- Init --
 buildKeyFields();
 onTypeChange();
 loadTestData();
 updateBonusNums();
+
 </script>
 </body>
 </html>
