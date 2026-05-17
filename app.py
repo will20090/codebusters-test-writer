@@ -247,7 +247,7 @@ def dispatch(row):
             return ciphers.baconianWordsFormatter(pt, key1, key3, value, hint_type, bonus)
         else:
             # Map frontend type values to what ciphers.py expects
-            btype_map = {'LETTERS': 'LETTERS', 'SEQUENCE': 'SEQUENCE'}
+            btype_map = {'LETTERS': 'LETTERS', 'RANDOM_LETTERS': 'RANDOM LETTERS', 'SEQUENCE': 'SEQUENCE'}
             btype = btype_map.get(rtype, 'LETTERS')
             return ciphers.baconianLetters(pt, key1, key2, 55, value, btype, hint_type, hint, bonus)
     elif cipher == 'CAESAR':
@@ -397,7 +397,18 @@ Team Number: \underline{{\hspace{{3cm}}}}
     import re as _re2
 
     def get_latex(q):
-        return q['latex'] if isinstance(q, dict) else q
+        if not isinstance(q, dict):
+            return q
+        latex = q['latex']
+        qtext = (q.get('qtext') or '').strip()
+        if qtext:
+            import re as _re_qt
+            latex = _re_qt.sub(
+                r'(\\question(?:\[\d+\])?)[ \t].*?(\n)',
+                lambda m: m.group(1) + ' ' + qtext + m.group(2),
+                latex, count=1
+            )
+        return latex
 
     def make_col_rows(qs_indexed):
         rows = ''
