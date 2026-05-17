@@ -316,19 +316,17 @@ def columnarFormatter(s, columns, crib, value, bonus):
 
 def cryptarithm_formatter(value, problem_text, solution_numbers, operation, bonus):
     nums = str(solution_numbers)
-    math_nums = "\\:".join(nums.split())
-    bonus_text = " \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
-    return (f"\\normalsize \\question[{value}] Solve this \\textbf{{cryptarithm}} for ${math_nums}$. "
-            f"Write out your final answer and $\\boxed{{\\text{{box}}}}$ it.{bonus_text}\n"
-            f"\\parskip 1cm\n\n\\Large\n\\begin{{verbatim}}\n{problem_text}\n\\end{{verbatim}}\n"
-            f"\\vfill\n\\uplevel{{\\hrulefill}}")
+    math_nums = r'\:'.join(nums.split())
+    bonus_text = r" \emph{$\bigstar$\textbf{This question is a special bonus question.}}" if bonus else ""
+    op_label = operation if operation else "Addition"
+    header_lines = "Base 10 " + op_label + "\nAnswer: " + nums
+    q_text = (r"\normalsize \question[" + str(value) + r"] Solve this \textbf{" + op_label + r" Cryptarithm} for $" + math_nums + r"$. "
+              r"Write out your final answer and $\boxed{\text{box}}$ it." + bonus_text + "\n"
+              r"\parskip 1cm" + "\n\n" + r"\Large" + "\n" + r"\begin{verbatim}" + "\n"
+              + header_lines + "\n\n\n" + problem_text + "\n" + r"\end{verbatim}" + "\n"
+              r"\vfill" + "\n" + r"\uplevel{\hrulefill}")
+    return q_text
 
-# ── Fractionated Morse ────────────────────────────────────────────────────────
-
-_MORSE = {'A':'.-','B':'-...','C':'-.-.','D':'-..','E':'.','F':'..-.','G':'--.','H':'....','I':'..','J':'.---',
-          'K':'-.-','L':'.-..','M':'--','N':'-.','O':'---','P':'.--.','Q':'--.-','R':'.-.','S':'...','T':'-',
-          'U':'..-','V':'...-','W':'.--','X':'-..-','Y':'-.--','Z':'--..'}
-_SYM = {'.':'$\\newmoon$','-':'-$\\,$','x':'$\\times$'}
 
 def fracalphabet(kw):
     kw = kw.upper()
