@@ -134,11 +134,12 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
           </label>
           <label>Type
             <select id="f-type" onchange="onTypeChange()">
-              <option value="DECODE">Decode (keys given)</option>
-              <option value="CRIB">Crib (keys hidden)</option>
-              <option value="WORDS">Words (Baconian)</option>
-              <option value="LETTERS">Letters (Baconian)</option>
-              <option value="EXTRACT">Extract (keyword)</option>
+              <option value="DECODE">Decode</option>
+              <option value="CRIB">Crib</option>
+              <option value="WORDS">Words</option>
+              <option value="LETTERS">Letters</option>
+              <option value="SEQUENCE">Sequence</option>
+              <option value="EXTRACT">Extract</option>
             </select>
           </label>
           <label>Point Value
@@ -305,8 +306,42 @@ function buildKeyFields() {
   });
 }
 
+const CIPHER_TYPES = {
+  ARISTOCRAT:   ['DECODE','EXTRACT'],
+  PATRISTOCRAT: ['DECODE','EXTRACT'],
+  XENOCRYPT:    ['DECODE','EXTRACT'],
+  BACONIAN:     ['LETTERS','SEQUENCE','WORDS'],
+  FRACMORSE:    ['DECODE','CRIB'],
+  CRYPTARITHM:  ['DECODE'],
+  PORTA:        ['DECODE','CRIB'],
+  COLUMNAR:     ['DECODE','CRIB'],
+  NIHILIST:     ['DECODE','CRIB'],
+  HILL:         ['DECODE'],
+  CHECKERBOARD: ['DECODE','CRIB'],
+  AFFINE:       ['DECODE','CRIB'],
+  ATBASH:       ['DECODE'],
+  CAESAR:       ['DECODE'],
+};
+
+const TYPE_LABELS = {
+  DECODE: 'Decode', CRIB: 'Crib', EXTRACT: 'Extract',
+  WORDS: 'Words', LETTERS: 'Letters',
+  SEQUENCE: 'Sequence',
+};
+
 function onTypeChange() {
-  // Could show/hide fields based on type in future
+  const cipher = document.getElementById('f-cipher').value;
+  const allowed = CIPHER_TYPES[cipher] || ['DECODE'];
+  const sel = document.getElementById('f-type');
+  const current = sel.value;
+  sel.innerHTML = '';
+  allowed.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = TYPE_LABELS[v] || v;
+    sel.appendChild(opt);
+  });
+  if (allowed.includes(current)) sel.value = current;
 }
 
 function onCryptarithmOpChange() {

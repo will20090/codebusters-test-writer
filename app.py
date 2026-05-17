@@ -16,7 +16,6 @@ BASE = os.path.dirname(__file__)
 
 def get_db():
     conn = psycopg2.connect(os.environ['DATABASE_URL'], sslmode='require')
-    conn.autocommit = True
     return conn
 
 def init_db():
@@ -79,11 +78,7 @@ def register():
         'INSERT INTO users (id, username, password, created) VALUES (%s, %s, %s, %s)',
         (uid, username, generate_password_hash(password), datetime.datetime.now().isoformat())
     )
-    try:
-        conn.commit()
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    cur.close(); conn.close()
+    conn.commit(); cur.close(); conn.close()
     session['uid'] = uid
     session['username'] = username
     return jsonify({'ok': True, 'username': username})
@@ -251,7 +246,9 @@ def dispatch(row):
         if rtype == 'WORDS':
             return ciphers.baconianWordsFormatter(pt, key1, key3, value, hint_type, bonus)
         else:
-            btype = rtype if rtype != 'DECODE' else 'LETTERS'
+            # Map frontend type values to what ciphers.py expects
+            btype_map = {'LETTERS': 'LETTERS', 'SEQUENCE': 'SEQUENCE'}
+            btype = btype_map.get(rtype, 'LETTERS')
             return ciphers.baconianLetters(pt, key1, key2, 55, value, btype, hint_type, hint, bonus)
     elif cipher == 'CAESAR':
         return ciphers.caesar_formatter(pt, int(key1), value, bonus)
@@ -640,20 +637,6 @@ def home():
 def builder():
     return render_template('builder.html')
 
-init_db()
-
 if __name__ == '__main__':
+    init_db()
     app.run(debug=True, port=5000)
-
-@app.route('/api/dbtest')
-def dbtest():
-    try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("INSERT INTO users (id, username, password, created) VALUES ('rendertest', 'rendertest', 'x', '2026-01-01')")
-        conn.commit()
-        cur.close()
-        conn.close()
-        return jsonify({'ok': True})
-    except Exception as e:
-        return jsonify({'error': str(e)}) 
