@@ -101,7 +101,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
             </label>
             <label>TQ Point Value<input id="s-tqvalue" value="250" oninput="settingsChanged()"></label>
             <label>TQ Phrase<input id="s-tqphrase" value="raise your hand" oninput="settingsChanged()"></label>
-            <label>Bonus Question Numbers<input id="s-bonus_nums" value="INSERT BONUS QUESTION NUMBERS" oninput="settingsChanged()"></label>
+            <label>Bonus Question Numbers<input id="s-bonus_nums" readonly style="background:#f0f0f0;color:#555;cursor:default;" placeholder="Auto-filled from bonus questions"></label>
             <label style="grid-column:1/-1">Writers (names separated by commas)<input id="s-writers" value="INSERT WRITERS" oninput="settingsChanged()"></label>
             <label style="grid-column:1/-1">TQ Plaintext<textarea id="s-tqcipher" oninput="settingsChanged()" placeholder="Enter the plaintext phrase"></textarea></label>
             <label style="grid-column:1/-1">Cover Image
@@ -448,6 +448,14 @@ async function addQuestion() {
 
 // ── Question list ─────────────────────────────────────────────────────────────
 
+function updateBonusNums() {
+  const bonusNums = questions
+    .map((q, i) => q.bonus ? i + 1 : null)
+    .filter(n => n !== null);
+  const el = document.getElementById('s-bonus_nums');
+  if (el) el.value = bonusNums.length ? bonusNums.join(', ') : 'None';
+}
+
 function renderList() {
   const list = document.getElementById('question-list');
   list.innerHTML = '';
@@ -481,6 +489,7 @@ function renderList() {
     list.appendChild(row);
   });
   document.getElementById('list-count').textContent = `${questions.length} question${questions.length!==1?'s':''}`;
+  updateBonusNums();
 }
 function startEdit(i) {
   if (editingIndex === i) { cancelEdit(); return; }
@@ -727,7 +736,7 @@ async function loadTestData() {
   // Restore settings
   const s = t.settings || {};
   // Restore simple text inputs
-  ['tournament','tqvalue','tqphrase','tqcipher','writers','bonus_nums'].forEach(k => {
+  ['tournament','tqvalue','tqphrase','tqcipher','writers'].forEach(k => {
     const el = document.getElementById('s-' + k);
     if (el && s[k] !== undefined) el.value = s[k];
   });
@@ -776,6 +785,7 @@ function scheduleSave() {
 buildKeyFields();
 onTypeChange();
 loadTestData();
+updateBonusNums();
 </script>
 </body>
 </html>
