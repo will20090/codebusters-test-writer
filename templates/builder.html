@@ -18,16 +18,18 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 /* -- Left panel -- */
 #left { width: 55%; display: flex; flex-direction: column; border-right: 1px solid #ccc; overflow: hidden; }
 
-/* Settings */
-#settings-panel { background: #fff; border-bottom: 1px solid #ccc; padding: 10px 14px; }
-#settings-panel summary { font-weight: bold; cursor: pointer; user-select: none; margin-bottom: 6px; }
-#settings-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 12px; margin-top: 8px; }
+/* -- Questions panel (flex column, fills left) -- */
+#panel-questions { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+/* -- Setup panel -- */
+#panel-setup { display: none; flex: 1; overflow-y: auto; padding: 14px; background: #fff; }
+#settings-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 12px; }
 #settings-grid label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: #555; }
 #settings-grid input, #settings-grid select, #settings-grid textarea { font-family: monospace; font-size: 12px; border: 1px solid #ccc; padding: 3px 5px; width: 100%; }
 #settings-grid textarea { grid-column: 1/-1; resize: vertical; height: 48px; }
 
 /* Question form */
-#form-panel { background: #fff; border-bottom: 2px solid #aaa; padding: 10px 14px; }
+#form-panel { background: #fff; border-bottom: 2px solid #aaa; padding: 10px 14px; flex-shrink: 0; }
 #form-panel h2 { font-size: 13px; margin-bottom: 8px; font-weight: bold; }
 #form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 #form-grid label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: #555; }
@@ -42,7 +44,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 #form-error { color: red; font-size: 11px; margin-top: 4px; min-height: 14px; }
 
 /* Question list */
-#list-header { background: #e8e8e8; padding: 6px 14px; font-size: 11px; color: #555; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; }
+#list-header { background: #e8e8e8; padding: 6px 14px; font-size: 11px; color: #555; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; flex-shrink: 0; }
 #question-list { flex: 1; overflow-y: auto; padding: 6px; }
 .q-row { background: #fff; border: 1px solid #ddd; margin-bottom: 4px; padding: 6px 10px; display: flex; align-items: flex-start; gap: 8px; cursor: grab; user-select: none; }
 .q-row:active { cursor: grabbing; }
@@ -73,8 +75,6 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 .left-tab.active { background: #fff; color: #222; font-weight: bold; }
 .left-tab:hover { background: #666; color: #fff; }
 .left-tab.active:hover { background: #fff; color: #222; }
-#panel-questions { display: block; }
-#panel-setup { display: none; }
 </style>
 </head>
 <body>
@@ -95,113 +95,111 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 
   <div id="main">
 
-    <!-- LEFT: settings + form + list -->
+    <!-- LEFT -->
     <div id="left">
 
       <!-- Setup panel -->
       <div id="panel-setup">
-      <div id="settings-grid">
-            <label>Tournament Name<input id="s-tournament" value="" placeholder="XXX Tournament" oninput="settingsChanged()"></label>
-            <label>Division
-              <select id="s-division" onchange="settingsChanged()">
-                <option value="" disabled selected>Select Division</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-              </select>
-            </label>
-            <label>Date
-              <input id="s-compdate" type="date" value="2026-01-01" oninput="settingsChanged()">
-            </label>
-            <label>TQ Point Value<input id="s-tqvalue" value="250" oninput="settingsChanged()"></label>
-            <label>TQ Phrase<input id="s-tqphrase" value="raise your hand" oninput="settingsChanged()"></label>
-            <label>Bonus Question Numbers<input id="s-bonus_nums" readonly style="background:#f0f0f0;color:#555;cursor:default;" placeholder="Auto-filled from bonus questions"></label>
-            <label style="grid-column:1/-1">Writers (names separated by commas)<input id="s-writers" value="INSERT WRITERS" oninput="settingsChanged()"></label>
-            <label style="grid-column:1/-1">TQ Plaintext<textarea id="s-tqcipher" oninput="settingsChanged()" placeholder="Enter the plaintext phrase"></textarea></label>
-            <label style="grid-column:1/-1">Cover Image
-              <input type="file" id="s-cover-file" accept="image/*" onchange="coverImageChanged(this)">
-              <span id="s-cover-status" style="font-size:11px;color:#888"></span>
-            </label>
-          </div>
-
-      </div><!-- end settings-grid -->
-      </div><!-- end panel-setup -->
+        <div id="settings-grid">
+          <label>Tournament Name<input id="s-tournament" value="" placeholder="XXX Tournament" oninput="settingsChanged()"></label>
+          <label>Division
+            <select id="s-division" onchange="settingsChanged()">
+              <option value="" disabled selected>Select Division</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+            </select>
+          </label>
+          <label>Date
+            <input id="s-compdate" type="date" value="2026-01-01" oninput="settingsChanged()">
+          </label>
+          <label>TQ Point Value<input id="s-tqvalue" value="250" oninput="settingsChanged()"></label>
+          <label>TQ Phrase<input id="s-tqphrase" value="raise your hand" oninput="settingsChanged()"></label>
+          <label>Bonus Question Numbers<input id="s-bonus_nums" readonly style="background:#f0f0f0;color:#555;cursor:default;" placeholder="Auto-filled from bonus questions"></label>
+          <label style="grid-column:1/-1">Writers (names separated by commas)<input id="s-writers" value="INSERT WRITERS" oninput="settingsChanged()"></label>
+          <label style="grid-column:1/-1">TQ Plaintext<textarea id="s-tqcipher" oninput="settingsChanged()" placeholder="Enter the plaintext phrase"></textarea></label>
+          <label style="grid-column:1/-1">Cover Image
+            <input type="file" id="s-cover-file" accept="image/*" onchange="coverImageChanged(this)">
+            <span id="s-cover-status" style="font-size:11px;color:#888"></span>
+          </label>
+        </div>
+      </div>
 
       <!-- Questions panel -->
       <div id="panel-questions">
 
-      <!-- Add Question Form -->
-      <div id="form-panel">
-        <h2>Add Question</h2>
-        <div id="form-grid">
-          <label class="span2">Cipher
-            <select id="f-cipher" onchange="onCipherChange()">
-              <option value="ARISTOCRAT">Aristocrat</option>
-              <option value="PATRISTOCRAT">Patristocrat</option>
-              <option value="XENOCRYPT">Xenocrypt</option>
-              <option value="ATBASH">Atbash</option>
-              <option value="BACONIAN">Baconian</option>
-              <option value="CAESAR">Caesar</option>
-              <option value="COLUMNAR">Complete Columnar</option>
-              <option value="CRYPTARITHM">Cryptarithm</option>
-              <option value="FRACMORSE">Fractionated Morse</option>
-              <option value="HILL">Hill</option>
-              <option value="NIHILIST">Nihilist</option>
-              <option value="PORTA">Porta</option>
-              <option value="AFFINE">Affine</option>
-              <option value="CHECKERBOARD">Checkerboard</option>
-            </select>
-          </label>
-          <label>Type
-            <select id="f-type" onchange="onTypeChange()">
-              <option value="DECODE">Decode</option>
-              <option value="CRIB">Crib</option>
-              <option value="WORDS">Words</option>
-              <option value="LETTERS">Letters</option>
-              <option value="RANDOM_LETTERS">Random Letters</option>
-              <option value="SEQUENCE">Sequence</option>
-              <option value="EXTRACT">Extract</option>
-            </select>
-          </label>
-          <label>Point Value
-            <input id="f-value" type="number" value="250" min="0">
-          </label>
-          <label class="span4">Plaintext
-            <div style="display:flex;gap:4px;align-items:center;">
-              <input id="f-plaintext" type="text" placeholder="Enter the plaintext phrase here" style="flex:1" oninput="handlePlaintextInput(this)">
-              <button type="button" id="nhtilde-btn" style="display:none;padding:3px 8px;font-size:13px;cursor:pointer;border:1px solid #ccc;background:#f8f8f8;" onclick="insertNTilde()">ñ</button>
-            </div>
-          </label>
-        </div>
-
-        <!-- Dynamic key fields -->
-        <div id="key-hints">
-          <!-- filled by onCipherChange() -->
-        </div>
-
-        <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;">
-          <input type="checkbox" id="f-bonus"> Bonus question
-        </label>
-
-        <div style="margin-top:10px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <span style="font-size:11px;font-weight:bold;color:#555;">Question Text <span style="font-weight:normal;color:#888;">(auto-filled after generating  -  edit for flavor text)</span></span>
-            <button type="button" id="regen-qtext-btn" onclick="regenQtextFromForm()" style="font-family:monospace;font-size:11px;padding:2px 10px;border:1px solid #ccc;background:#f8f8f8;cursor:pointer;">⟳ Regenerate</button>
+        <!-- Add Question Form -->
+        <div id="form-panel">
+          <h2>Add Question</h2>
+          <div id="form-grid">
+            <label class="span2">Cipher
+              <select id="f-cipher" onchange="onCipherChange()">
+                <option value="ARISTOCRAT">Aristocrat</option>
+                <option value="PATRISTOCRAT">Patristocrat</option>
+                <option value="XENOCRYPT">Xenocrypt</option>
+                <option value="ATBASH">Atbash</option>
+                <option value="BACONIAN">Baconian</option>
+                <option value="CAESAR">Caesar</option>
+                <option value="COLUMNAR">Complete Columnar</option>
+                <option value="CRYPTARITHM">Cryptarithm</option>
+                <option value="FRACMORSE">Fractionated Morse</option>
+                <option value="HILL">Hill</option>
+                <option value="NIHILIST">Nihilist</option>
+                <option value="PORTA">Porta</option>
+                <option value="AFFINE">Affine</option>
+                <option value="CHECKERBOARD">Checkerboard</option>
+              </select>
+            </label>
+            <label>Type
+              <select id="f-type" onchange="onTypeChange()">
+                <option value="DECODE">Decode</option>
+                <option value="CRIB">Crib</option>
+                <option value="WORDS">Words</option>
+                <option value="LETTERS">Letters</option>
+                <option value="RANDOM_LETTERS">Random Letters</option>
+                <option value="SEQUENCE">Sequence</option>
+                <option value="EXTRACT">Extract</option>
+              </select>
+            </label>
+            <label>Point Value
+              <input id="f-value" type="number" value="250" min="0">
+            </label>
+            <label class="span4">Plaintext
+              <div style="display:flex;gap:4px;align-items:center;">
+                <input id="f-plaintext" type="text" placeholder="Enter the plaintext phrase here" style="flex:1" oninput="handlePlaintextInput(this)">
+                <button type="button" id="nhtilde-btn" style="display:none;padding:3px 8px;font-size:13px;cursor:pointer;border:1px solid #ccc;background:#f8f8f8;" onclick="insertNTilde()">ñ</button>
+              </div>
+            </label>
           </div>
-          <textarea id="f-qtext" style="width:100%;height:70px;font-family:monospace;font-size:12px;border:1px solid #ccc;padding:4px;resize:vertical;" placeholder="Generate a question first to populate this field..."></textarea>
+
+          <!-- Dynamic key fields -->
+          <div id="key-hints"></div>
+
+          <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;">
+            <input type="checkbox" id="f-bonus"> Bonus question
+          </label>
+
+          <div style="margin-top:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+              <span style="font-size:11px;font-weight:bold;color:#555;">Question Text <span style="font-weight:normal;color:#888;">(auto-filled after generating  -  edit for flavor text)</span></span>
+              <button type="button" id="regen-qtext-btn" onclick="regenQtextFromForm()" style="font-family:monospace;font-size:11px;padding:2px 10px;border:1px solid #ccc;background:#f8f8f8;cursor:pointer;">⟳ Regenerate</button>
+            </div>
+            <textarea id="f-qtext" style="width:100%;height:70px;font-family:monospace;font-size:12px;border:1px solid #ccc;padding:4px;resize:vertical;" placeholder="Generate a question first to populate this field..."></textarea>
+          </div>
+
+          <div id="form-error"></div>
+          <button id="add-btn" onclick="addQuestion()">Add Question</button>
+          <button id="save-edit-btn" style="display:none;margin-top:8px;margin-left:8px;background:#222;color:#fff;border:none;padding:6px 14px;cursor:pointer;font-family:monospace;font-size:13px;" onclick="saveEdit()">Save Edit</button>
+          <button id="cancel-edit-btn" style="display:none;margin-top:8px;margin-left:8px;background:#888;color:#fff;border:none;padding:6px 14px;cursor:pointer;font-family:monospace;font-size:13px;" onclick="cancelEdit()">Cancel</button>
         </div>
 
-        <div id="form-error"></div>
-        <button id="add-btn" onclick="addQuestion()">Add Question</button>
-        <button id="save-edit-btn" style="display:none;margin-top:8px;margin-left:8px;background:#222;color:#fff;border:none;padding:6px 14px;cursor:pointer;font-family:monospace;font-size:13px;" onclick="saveEdit()">Save Edit</button>
-        <button id="cancel-edit-btn" style="display:none;margin-top:8px;margin-left:8px;background:#888;color:#fff;border:none;padding:6px 14px;cursor:pointer;font-family:monospace;font-size:13px;" onclick="cancelEdit()">Cancel</button>
-      </div>
+        <div id="list-header">
+          <span id="list-count">0 questions</span>
+          <span>drag rows to reorder</span>
+        </div>
+        <div id="question-list"></div>
+      </div><!-- end panel-questions -->
 
-      <div id="list-header">
-        <span id="list-count">0 questions</span>
-        <span>drag rows to reorder</span>
-      </div>
-      <div id="question-list"></div>
-    </div>
+    </div><!-- end left -->
 
     <!-- RIGHT: PDF preview -->
     <div id="right">
@@ -223,14 +221,12 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 <script charset="utf-8">
 
 // -- State --
-
 let questions = [];
 let activeTab = 'test';
 let previewDirty = false;
-let editingIndex = -1;  // -1 = adding new, >=0 = editing existing
+let editingIndex = -1;
 
 // -- Cipher field definitions --
-
 const CIPHER_FIELDS = {
   ARISTOCRAT:   [{id:'key1',label:'Keyword (blank=random)'},{id:'key2',label:'Shift'},{id:'key3',label:'Alph type (K1/K2/K3/blank)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},{id:'hint',label:'Hint text'}],
   PATRISTOCRAT: [{id:'key1',label:'Keyword'},{id:'key2',label:'Shift'},{id:'key3',label:'Alph type (K1/K2/K3/blank)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},{id:'hint',label:'Hint text'}],
@@ -250,18 +246,14 @@ const CIPHER_FIELDS = {
 
 function handlePlaintextInput(input) {
   const cipher = document.getElementById('f-cipher').value;
-  // Show ñ button only for Xenocrypt
   document.getElementById('nhtilde-btn').style.display = cipher === 'XENOCRYPT' ? 'inline-block' : 'none';
   if (cipher !== 'XENOCRYPT') return;
-  // Strip accents except ñ/Ñ
   const pos = input.selectionStart;
   const original = input.value;
   const cleaned = original.split('').map(c => {
     if (c === 'ñ' || c === 'Ñ') return c;
-    // Decompose and strip combining marks
     const decomposed = c.normalize('NFD');
-    const base = decomposed.replace(/[\u0300-\u036f]/g, '');
-    return base;
+    return decomposed.replace(/[\u0300-\u036f]/g, '');
   }).join('');
   if (cleaned !== original) {
     input.value = cleaned;
@@ -377,7 +369,6 @@ function onTypeChange() {
 function onCryptarithmOpChange() {
   const opEl = document.getElementById('f-key3');
   const op = opEl ? opEl.value : '';
-  // Show/hide custom op input
   let customRow = document.getElementById('crypto-custom-op-row');
   if (op === 'Other') {
     if (!customRow) {
@@ -417,10 +408,7 @@ function getField(id) {
   return el.value.trim();
 }
 
-// -- Add question --
-
 function extractQtext(latex) {
-  // Match from \question[N] or \question to end of that logical line
   const m = latex.match(/\\question(?:\[\d+\])?\s+([\s\S]*?)(?=\n\\parskip|\n\\Large|\n\\begin|\n\\vfill|\n\n)/);
   return m ? m[1].trim() : '';
 }
@@ -464,7 +452,6 @@ async function addQuestion() {
   const value = getField('value') || 5;
   const type = getField('type');
   const bonus = document.getElementById('f-bonus').checked;
-
   const rawOp = getField('key3');
   const customOp = (document.getElementById('crypto-custom-op') || {}).value || '';
   const resolvedOp = (rawOp === 'Other' && customOp) ? customOp : rawOp;
@@ -474,10 +461,8 @@ async function addQuestion() {
     key3: resolvedOp, key4: getField('key4'),
     hint_type: getField('hint_type'), hint: getField('hint'),
   };
-
   const btn = document.getElementById('add-btn');
   btn.textContent = 'Generating...'; btn.disabled = true;
-
   try {
     const res = await fetch('/api/generate', {
       method: 'POST',
@@ -489,13 +474,10 @@ async function addQuestion() {
       document.getElementById('form-error').textContent = data.error;
       return;
     }
-
     const label = `${cipher} [${value}pt]${bonus ? ' *' : ''}`;
     const sub = plaintext || payload.key1 || '(no plaintext)';
-    // Use whatever is in the qtext field (user may have edited it), fall back to extracted
     const formQtext = document.getElementById('f-qtext').value.trim();
     const autoQtext = formQtext || extractQtext(data.latex);
-    // Also populate the field if it was empty
     if (!formQtext) document.getElementById('f-qtext').value = autoQtext;
     questions.push({
       latex: data.latex, cipher, plaintext: sub, label, bonus,
@@ -507,11 +489,8 @@ async function addQuestion() {
     renderList();
     previewDirty = true;
     setStatus('Question added. Click Refresh Preview to update.');
-
-    // Auto-refresh if <=10 questions
     scheduleSave();
     if (questions.length <= 10) refreshPreview();
-
   } catch(e) {
     document.getElementById('form-error').textContent = 'Network error: ' + e.message;
   } finally {
@@ -520,12 +499,8 @@ async function addQuestion() {
   }
 }
 
-// -- Question list --
-
 function updateBonusNums() {
-  const bonusNums = questions
-    .map((q, i) => q.bonus ? i + 1 : null)
-    .filter(n => n !== null);
+  const bonusNums = questions.map((q, i) => q.bonus ? i + 1 : null).filter(n => n !== null);
   const el = document.getElementById('s-bonus_nums');
   if (el) el.value = bonusNums.length ? bonusNums.join(', ') : 'None';
 }
@@ -536,7 +511,7 @@ function renderList() {
   questions.forEach((q, i) => {
     const row = document.createElement('div');
     row.className = 'q-row' + (editingIndex === i ? ' editing' : '');
-    row.draggable = editingIndex === -1;  // disable drag while editing
+    row.draggable = editingIndex === -1;
     row.dataset.idx = i;
     row.innerHTML = `
       <span class="q-num">${i+1}.</span>
@@ -545,7 +520,6 @@ function renderList() {
         <div class="q-sub">${escHtml(q.plaintext)}</div>
       </div>
       <span class="q-del" onclick="deleteQuestion(${i})">x</span>
-
     `;
     row.addEventListener('dragstart', e => { if (editingIndex >= 0) { e.preventDefault(); return; } e.dataTransfer.setData('text/plain', i); row.classList.add('dragging'); });
     row.addEventListener('dragend', () => row.classList.remove('dragging'));
@@ -566,16 +540,15 @@ function renderList() {
   document.getElementById('list-count').textContent = `${questions.length} question${questions.length!==1?'s':''}`;
   updateBonusNums();
 }
+
 function startEdit(i) {
   if (editingIndex === i) { cancelEdit(); return; }
   editingIndex = i;
   const q = questions[i];
   const p = q.payload || {};
-
   document.getElementById('f-cipher').value = p.cipher || q.cipher || 'ARISTOCRAT';
   document.getElementById('f-type').value   = p.type   || 'DECODE';
   buildKeyFields();
-
   document.getElementById('f-value').value     = p.value    || '250';
   document.getElementById('f-plaintext').value = p.plaintext || q.plaintext || '';
   document.getElementById('f-bonus').checked   = p.bonus    || false;
@@ -583,19 +556,12 @@ function startEdit(i) {
     const el = document.getElementById('f-' + k);
     if (el && p[k] !== undefined) el.value = p[k];
   });
-
-  // Show ñ button if xenocrypt
   document.getElementById('nhtilde-btn').style.display =
     (p.cipher || q.cipher) === 'XENOCRYPT' ? 'inline-block' : 'none';
-
-  // Populate qtext field
   document.getElementById('f-qtext').value = q.qtext || '';
-
-  // Toggle buttons
   document.getElementById('add-btn').style.display       = 'none';
   document.getElementById('save-edit-btn').style.display = 'inline-block';
   document.getElementById('cancel-edit-btn').style.display = 'inline-block';
-
   renderList();
   document.getElementById('form-panel').scrollIntoView({behavior:'smooth'});
 }
@@ -622,7 +588,6 @@ function resetForm() {
 }
 
 async function saveEdit() {
-  // Save qtext from form field
   if (editingIndex >= 0) {
     questions[editingIndex].qtext = document.getElementById('f-qtext').value.trim();
   }
@@ -639,10 +604,8 @@ async function saveEdit() {
     key3: getField('key3'), key4: getField('key4'),
     hint_type: getField('hint_type'), hint: getField('hint'),
   };
-
   const btn = document.getElementById('save-edit-btn');
   btn.textContent = 'Regenerating...'; btn.disabled = true;
-
   try {
     const res = await fetch('/api/generate', {
       method: 'POST',
@@ -662,7 +625,7 @@ async function saveEdit() {
       keyword: data.keyword || null,
       payload
     };
-    cancelEdit();  // resets button and editingIndex
+    cancelEdit();
     renderList(); previewDirty = true; scheduleSave();
     setStatus('Question updated. Click Refresh Preview to update.');
     if (questions.length <= 10) refreshPreview();
@@ -684,9 +647,6 @@ function escHtml(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// -- Settings --
-
-// Format a date input value (YYYY-MM-DD) to M/D/YYYY for display in the PDF
 function formatDateForPDF(val) {
   if (!val) return '';
   const [y, m, d] = val.split('-');
@@ -708,6 +668,7 @@ function getSettings() {
     cover_image: coverImageData,
   };
 }
+
 let coverImageData = '';
 
 function coverImageChanged(input) {
@@ -723,8 +684,6 @@ function coverImageChanged(input) {
 }
 
 function settingsChanged() { previewDirty = true; scheduleSave(); }
-
-// -- Preview --
 
 function switchTab(tab) {
   activeTab = tab;
@@ -748,21 +707,16 @@ async function refreshPreview() {
   document.getElementById('preview-frame').style.display = 'none';
   document.getElementById('preview-placeholder').style.display = 'flex';
   document.getElementById('preview-placeholder').textContent = 'Compiling PDF...';
-
   try {
     const res = await fetch('/api/preview', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        settings: getSettings(),
-        questions: questions,
-        is_key: activeTab === 'key'
-      })
+      body: JSON.stringify({ settings: getSettings(), questions, is_key: activeTab === 'key' })
     });
     if (!res.ok) {
       const err = await res.json();
       setStatus('Error: ' + (err.error || 'compile failed'));
-      document.getElementById('preview-placeholder').textContent = 'Compile error  -  check terminal for LaTeX log.';
+      document.getElementById('preview-placeholder').textContent = 'Compile error - check terminal for LaTeX log.';
       return;
     }
     const blob = await res.blob();
@@ -771,7 +725,7 @@ async function refreshPreview() {
     frame.src = url + '#toolbar=1&navpanes=0';
     frame.style.display = 'block';
     document.getElementById('preview-placeholder').style.display = 'none';
-    setStatus(`Showing ${activeTab === 'key' ? 'answer key' : 'test'}  -  ${questions.length} question(s)`);
+    setStatus(`Showing ${activeTab === 'key' ? 'answer key' : 'test'} - ${questions.length} question(s)`);
     previewDirty = false;
   } catch(e) {
     setStatus('Network error: ' + e.message);
@@ -796,46 +750,41 @@ async function downloadPDF(isKey) {
   setStatus('Downloaded.');
 }
 
-function clearAll() {
-  if (questions.length && !confirm('Clear all questions?')) return;
-  questions = []; renderList(); previewDirty = false;
-  document.getElementById('preview-frame').style.display = 'none';
-  document.getElementById('preview-placeholder').style.display = 'flex';
-  document.getElementById('preview-placeholder').textContent = 'Add at least one question, then click Refresh Preview.';
-  setStatus('Cleared.');
-}
-
-// -- Profile / test state --
-let currentTestId  = sessionStorage.getItem('testId') || null;
-let saveTimer = null;
-
+// -- Left tab switching (KEY FIX) --
 function switchLeftTab(tab) {
-  document.getElementById('panel-questions').style.display = tab === 'questions' ? 'block' : 'none';
-  document.getElementById('panel-setup').style.display = tab === 'setup' ? 'block' : 'none';
+  const qPanel = document.getElementById('panel-questions');
+  const sPanel = document.getElementById('panel-setup');
+  if (tab === 'questions') {
+    qPanel.style.display = 'flex';
+    sPanel.style.display = 'none';
+  } else {
+    qPanel.style.display = 'none';
+    sPanel.style.display = 'block';
+  }
   document.getElementById('ltab-questions').classList.toggle('active', tab === 'questions');
   document.getElementById('ltab-setup').classList.toggle('active', tab === 'setup');
 }
 
 function goHome() { window.location.href = window.location.protocol + '//' + window.location.host + '/'; }
 
+let currentTestId = sessionStorage.getItem('testId') || null;
+let saveTimer = null;
+
 async function loadTestData() {
   if (!currentTestId) return;
-  const res = await fetch('/api/tests/' + currentTestId);  const t = await res.json();
+  const res = await fetch('/api/tests/' + currentTestId);
+  const t = await res.json();
   if (t.error) return;
   document.getElementById('test-title').textContent = t.name;
-  // Restore settings
   const s = t.settings || {};
-  // Restore simple text inputs
   ['tournament','tqvalue','tqphrase','tqcipher','writers'].forEach(k => {
     const el = document.getElementById('s-' + k);
     if (el && s[k] !== undefined) el.value = s[k];
   });
-  // Restore division dropdown
   if (s.division) {
     const divEl = document.getElementById('s-division');
     if (divEl) divEl.value = s.division;
   }
-  // Restore date: convert M/D/YYYY back to YYYY-MM-DD for the date input
   if (s.compdate) {
     const parts = s.compdate.split('/');
     if (parts.length === 3) {
@@ -848,10 +797,8 @@ async function loadTestData() {
   }
   coverImageData = s.cover_image || '';
   if (coverImageData) document.getElementById('s-cover-status').textContent = 'v (saved image)';
-  // Restore questions
   questions = t.questions || [];
   renderList();
-  // If no questions yet, show setup tab; otherwise stay on questions tab
   if (questions.length === 0) switchLeftTab('setup');
   if (questions.length > 0) setStatus('Test loaded. Click Refresh Preview to view.');
 }
@@ -862,7 +809,7 @@ async function autosave() {
   await fetch('/api/tests/' + currentTestId, {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ settings: getSettings(), questions: questions })
+    body: JSON.stringify({ settings: getSettings(), questions })
   });
   document.getElementById('save-status').textContent = 'Saved v';
   setTimeout(() => { document.getElementById('save-status').textContent = ''; }, 2000);
