@@ -527,6 +527,14 @@ Rank: \underline{{\hspace{{1.5cm}}}}
 """
     else:
         questions_latex_list = [get_latex(q) for q in questions_data]
+        # Wrap each question in samepage to prevent mid-question page breaks,
+        # and insert \clearpage after every 2 questions (max 2 per page).
+        paged_questions = []
+        for idx, qlatex in enumerate(questions_latex_list):
+            paged_questions.append(r'\begin{samepage}' + '\n' + qlatex + '\n' + r'\end{samepage}')
+            if (idx + 1) % 2 == 0 and idx + 1 < len(questions_latex_list):
+                paged_questions.append(r'\clearpage')
+        questions_body = '\n'.join(paged_questions)
         middle_section = rf"""
 {scoring_page}
 \newpage
@@ -556,7 +564,7 @@ Replacement&&&&&&&&&&&&&&&&&&&&&&&&&&\\
 \newpage
 
 \begin{{questions}}
-{"".join(questions_latex_list)}
+{questions_body}
 \end{{questions}}
 """
 

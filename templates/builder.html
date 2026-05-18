@@ -338,13 +338,19 @@ function buildKeyFields() {
     }
     div.appendChild(label);
   });
-  // For BACONIAN WORDS: hide key1/key2 (replaced by alphabet table), show widget
+  // For BACONIAN WORDS: hide key1/key2/key3/hint fields (replaced by alphabet table), show widget
   if (cipher === 'BACONIAN') {
     const k1 = document.getElementById('f-key1');
     const k2 = document.getElementById('f-key2');
+    const k3 = document.getElementById('f-key3');
+    const ht = document.getElementById('f-hint_type');
+    const hi = document.getElementById('f-hint');
     if (typeVal === 'WORDS') {
       if (k1) k1.closest('label').style.display = 'none';
       if (k2) k2.closest('label').style.display = 'none';
+      if (k3) k3.closest('label').style.display = 'none';
+      if (ht) ht.closest('label').style.display = 'none';
+      if (hi) hi.closest('label').style.display = 'none';
       appendBaconAlphWidget(div);
     }
   }
@@ -459,6 +465,12 @@ function onTypeChange() {
     if (sel.value === 'WORDS') {
       if (k1el) k1el.closest('label').style.display = 'none';
       if (k2el) k2el.closest('label').style.display = 'none';
+      const k3el = document.getElementById('f-key3');
+      const htel = document.getElementById('f-hint_type');
+      const hiel = document.getElementById('f-hint');
+      if (k3el) k3el.closest('label').style.display = 'none';
+      if (htel) htel.closest('label').style.display = 'none';
+      if (hiel) hiel.closest('label').style.display = 'none';
       appendBaconAlphWidget(document.getElementById('key-hints'));
     } else {
       if (k1el) k1el.closest('label').style.display = '';
@@ -649,9 +661,13 @@ function startEdit(i) {
   const p = q.payload || {};
   document.getElementById('f-cipher').value = p.cipher || q.cipher || 'ARISTOCRAT';
   buildKeyFields();
-  onTypeChange();
-  // Set type after onTypeChange rebuilds options
+  // Set type first so onTypeChange can use it for field visibility
   if (p.type) document.getElementById('f-type').value = p.type;
+  // Restore baconAlph before onTypeChange so the widget renders correctly
+  if ((p.cipher || q.cipher) === 'BACONIAN' && p.type === 'WORDS' && p.key1) {
+    baconAlph = p.key1;
+  }
+  onTypeChange();
   document.getElementById('f-value').value     = p.value    || '250';
   document.getElementById('f-plaintext').value = p.plaintext || q.plaintext || '';
   document.getElementById('f-bonus').checked   = p.bonus    || false;
@@ -659,9 +675,8 @@ function startEdit(i) {
     const el = document.getElementById('f-' + k);
     if (el && p[k] !== undefined) el.value = p[k];
   });
-  // Restore baconAlph if editing a BACONIAN WORDS question
+  // Re-render bacon table in case baconAlph was restored
   if ((p.cipher || q.cipher) === 'BACONIAN' && p.type === 'WORDS' && p.key1) {
-    baconAlph = p.key1;
     renderBaconTable();
   }
   document.getElementById('nhtilde-btn').style.display =
