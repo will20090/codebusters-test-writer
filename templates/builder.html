@@ -243,7 +243,7 @@ const CIPHER_FIELDS = {
   PATRISTOCRAT: [{id:'key1',label:'Keyword'},{id:'key2',label:'Shift'},{id:'key3',label:'Alph type (K1/K2/K3/blank)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},{id:'hint',label:'Hint text'}],
   XENOCRYPT:    [{id:'key1',label:'Keyword'},{id:'key2',label:'Shift'},{id:'key3',label:'Alph type (K1/K2/K3/blank)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},{id:'hint',label:'Hint text'}],
   ATBASH:       [{id:'key3',label:'Block size (default 5)'}],
-  BACONIAN:     [{id:'key3',label:'Crib word (optional)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Start Crib','Middle Crib','End Crib']},{id:'hint',label:'Hint text'}],
+  BACONIAN:     [{id:'key1',label:'A-letters (e.g. AEIOU)'},{id:'key2',label:'B-letters (e.g. BCDF)'},{id:'key3',label:'Crib word / block len'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Letters','Start Crib','Middle Crib','End Crib']},{id:'hint',label:'Hint text'}],
   CAESAR:       [{id:'key1',label:'Shift (integer)'}],
   COLUMNAR:     [{id:'key1',label:'Columns (integer)'},{id:'key2',label:'Crib word'}],
   CRYPTARITHM:  [{id:'key3',label:'Operation',type:'select',opts:['Addition','Subtraction','Multiplication','Other']},{id:'key2',label:'Solution numbers (space-separated, e.g. 123 456 789)'},{id:'key1',label:'Problem text (verbatim - auto-filled from template, edit as needed)',type:'textarea'}],
@@ -338,9 +338,15 @@ function buildKeyFields() {
     }
     div.appendChild(label);
   });
-  // Append bacon alphabet widget if BACONIAN + WORDS
-  if (cipher === 'BACONIAN' && typeVal === 'WORDS') {
-    appendBaconAlphWidget(div);
+  // For BACONIAN WORDS: hide key1/key2 (replaced by alphabet table), show widget
+  if (cipher === 'BACONIAN') {
+    const k1 = document.getElementById('f-key1');
+    const k2 = document.getElementById('f-key2');
+    if (typeVal === 'WORDS') {
+      if (k1) k1.closest('label').style.display = 'none';
+      if (k2) k2.closest('label').style.display = 'none';
+      appendBaconAlphWidget(div);
+    }
   }
 }
 
@@ -444,11 +450,20 @@ function onTypeChange() {
     sel.appendChild(opt);
   });
   if (allowed.includes(current)) sel.value = current;
-  // Show/hide bacon widget based on type
+  // Show/hide bacon widget and key1/key2 based on type
   const existing = document.getElementById('bacon-alph-widget');
   if (existing) existing.remove();
-  if (cipher === 'BACONIAN' && sel.value === 'WORDS') {
-    appendBaconAlphWidget(document.getElementById('key-hints'));
+  const k1el = document.getElementById('f-key1');
+  const k2el = document.getElementById('f-key2');
+  if (cipher === 'BACONIAN') {
+    if (sel.value === 'WORDS') {
+      if (k1el) k1el.closest('label').style.display = 'none';
+      if (k2el) k2el.closest('label').style.display = 'none';
+      appendBaconAlphWidget(document.getElementById('key-hints'));
+    } else {
+      if (k1el) k1el.closest('label').style.display = '';
+      if (k2el) k2el.closest('label').style.display = '';
+    }
   }
 }
 
