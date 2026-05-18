@@ -68,6 +68,13 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 #preview-frame { flex: 1; border: none; background: #888; }
 #preview-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: #888; font-size: 14px; background: #ddd; }
 .q-row.editing { border: 2px solid #222; background: #fffbe6; }
+#left-tabs { display: flex; gap: 2px; }
+.left-tab { padding: 5px 14px; cursor: pointer; font-family: monospace; font-size: 12px; border: 1px solid #555; background: #444; color: #ccc; }
+.left-tab.active { background: #fff; color: #222; font-weight: bold; }
+.left-tab:hover { background: #666; color: #fff; }
+.left-tab.active:hover { background: #fff; color: #222; }
+#panel-questions { display: block; }
+#panel-setup { display: none; }
 </style>
 </head>
 <body>
@@ -78,6 +85,10 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
     <button onclick="goHome()" style="background:#444">← My Tests</button>
     <h1 id="test-title">CODEBUSTERS TEST BUILDER</h1>
     <span id="save-status" style="font-size:11px;color:#aaa;margin-right:8px"></span>
+    <div id="left-tabs" style="display:flex;gap:2px;margin-right:8px;">
+      <div class="left-tab active" id="ltab-questions" onclick="switchLeftTab('questions')">Questions</div>
+      <div class="left-tab" id="ltab-setup" onclick="switchLeftTab('setup')">Tournament Setup + Timed</div>
+    </div>
     <button onclick="downloadPDF(false)">⬇ Download Test PDF</button>
     <button onclick="downloadPDF(true)">⬇ Download Key PDF</button>
   </div>
@@ -87,7 +98,8 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
     <!-- LEFT: settings + form + list -->
     <div id="left">
 
-      <!-- Settings -->
+      <!-- Setup panel -->
+      <div id="panel-setup">
       <div id="settings-grid">
             <label>Tournament Name<input id="s-tournament" value="" placeholder="XXX Tournament" oninput="settingsChanged()"></label>
             <label>Division
@@ -110,6 +122,12 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
               <span id="s-cover-status" style="font-size:11px;color:#888"></span>
             </label>
           </div>
+
+      </div><!-- end settings-grid -->
+      </div><!-- end panel-setup -->
+
+      <!-- Questions panel -->
+      <div id="panel-questions">
 
       <!-- Add Question Form -->
       <div id="form-panel">
@@ -791,6 +809,13 @@ function clearAll() {
 let currentTestId  = sessionStorage.getItem('testId') || null;
 let saveTimer = null;
 
+function switchLeftTab(tab) {
+  document.getElementById('panel-questions').style.display = tab === 'questions' ? 'block' : 'none';
+  document.getElementById('panel-setup').style.display = tab === 'setup' ? 'block' : 'none';
+  document.getElementById('ltab-questions').classList.toggle('active', tab === 'questions');
+  document.getElementById('ltab-setup').classList.toggle('active', tab === 'setup');
+}
+
 function goHome() { window.location.href = window.location.protocol + '//' + window.location.host + '/'; }
 
 async function loadTestData() {
@@ -826,6 +851,8 @@ async function loadTestData() {
   // Restore questions
   questions = t.questions || [];
   renderList();
+  // If no questions yet, show setup tab; otherwise stay on questions tab
+  if (questions.length === 0) switchLeftTab('setup');
   if (questions.length > 0) setStatus('Test loaded. Click Refresh Preview to view.');
 }
 
