@@ -500,8 +500,7 @@ Rank: \underline{{\hspace{{1.5cm}}}}
         for idx, q in enumerate(questions_data):
             questions_latex_list.append(get_latex(q))
             if (idx + 1) % 2 == 0 and idx < len(questions_data) - 1:
-                questions_latex_list.append('\n\\clearpage
-')
+                questions_latex_list.append('\n\\clearpage\n')
         middle_section = rf"""
 {scoring_page}
 \newpage
