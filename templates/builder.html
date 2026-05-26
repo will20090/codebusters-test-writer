@@ -927,13 +927,21 @@ async function loadTestData() {
 async function autosave() {
   if (!currentTestId) return;
   document.getElementById('save-status').textContent = 'Saving...';
-  await fetch('/api/tests/' + currentTestId, {
-    method: 'PUT',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ settings: getSettings(), questions: questions })
-  });
-  document.getElementById('save-status').textContent = 'Saved';
-  setTimeout(function() { document.getElementById('save-status').textContent = ''; }, 2000);
+  try {
+    const res = await fetch('/api/tests/' + currentTestId, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ settings: getSettings(), questions: questions })
+    });
+    if (res.status === 401) {
+      document.getElementById('save-status').textContent = 'Session expired - please log in again';
+      return;
+    }
+    document.getElementById('save-status').textContent = 'Saved';
+    setTimeout(function() { document.getElementById('save-status').textContent = ''; }, 2000);
+  } catch(e) {
+    document.getElementById('save-status').textContent = 'Save failed: ' + e.message;
+  }
 }
 
 function scheduleSave() {
