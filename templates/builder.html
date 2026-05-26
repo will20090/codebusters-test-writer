@@ -82,7 +82,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 
   <!-- Top bar -->
   <div id="top-bar">
-    <button onclick="goHome()" style="background:#444">Left My Tests</button>
+    <button onclick="goHome()" style="background:#444">← My Tests</button>
     <h1 id="test-title">CODEBUSTERS TEST BUILDER</h1>
     <span id="save-status" style="font-size:11px;color:#aaa;margin-right:8px"></span>
     <div id="left-tabs" style="display:flex;gap:2px;margin-right:8px;">
@@ -890,8 +890,13 @@ let saveTimer = null;
 async function loadTestData() {
   if (!currentTestId) return;
   const res = await fetch('/api/tests/' + currentTestId);
+  if (res.status === 401) {
+    // Session expired - go back to login
+    window.location.href = window.location.protocol + '//' + window.location.host + '/';
+    return;
+  }
   const t = await res.json();
-  if (t.error) return;
+  if (t.error) { setStatus('Error loading test: ' + t.error); return; }
   document.getElementById('test-title').textContent = t.name;
   const s = t.settings || {};
   ['tournament','tqvalue','tqphrase','tqcipher','writers'].forEach(function(k) {
