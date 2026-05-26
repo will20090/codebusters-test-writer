@@ -6,7 +6,10 @@ sys.path.insert(0, os.path.dirname(__file__))
 import ciphers
 
 app = Flask(__name__)
-app.secret_key = 'codebusters-secret-key-change-this'
+app.secret_key = os.environ.get('SECRET_KEY', 'codebusters-secret-key-change-this')
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=3650)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = True
 
 BASE      = os.path.dirname(__file__)
 DATA_DIR  = os.path.join(BASE, 'data')
@@ -89,6 +92,7 @@ def register():
         'created': datetime.datetime.now().isoformat()
     }
     save_users(users)
+    session.permanent = True
     session['uid'] = uid
     session['username'] = username
     return jsonify({'ok': True, 'username': username})
