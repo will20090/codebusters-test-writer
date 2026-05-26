@@ -588,7 +588,7 @@ async function addQuestion() {
       return;
     }
     const label = payload.cipher + ' [' + payload.value + 'pt]' + (payload.bonus ? ' *' : '');
-    const sub = payload.plaintext || payload.key1 || '(no plaintext)';
+    const sub = payload.plaintext || '(no plaintext)';
     const formQtext = document.getElementById('f-qtext').value.trim();
     const autoQtext = formQtext || extractQtext(data.latex);
     if (!formQtext) document.getElementById('f-qtext').value = autoQtext;
@@ -735,7 +735,7 @@ async function saveEdit() {
       return;
     }
     const label = payload.cipher + ' [' + payload.value + 'pt]' + (payload.bonus ? ' *' : '');
-    const sub = payload.plaintext || payload.key1 || '(no plaintext)';
+    const sub = payload.plaintext || '(no plaintext)';
     questions[editingIndex] = {
       latex: data.latex, cipher: payload.cipher, plaintext: sub, label, bonus: payload.bonus,
       answer: data.answer, answer_bold: data.answer_bold,
