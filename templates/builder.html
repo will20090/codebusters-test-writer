@@ -588,7 +588,7 @@ async function addQuestion() {
       return;
     }
     const label = payload.cipher + ' [' + payload.value + 'pt]' + (payload.bonus ? ' *' : '');
-    const sub = document.getElementById('f-plaintext').value.trim() || payload.plaintext || '(no plaintext)';
+    const sub = payload.plaintext || '(no plaintext)';
     const formQtext = document.getElementById('f-qtext').value.trim();
     const autoQtext = formQtext || extractQtext(data.latex);
     if (!formQtext) document.getElementById('f-qtext').value = autoQtext;
@@ -673,8 +673,7 @@ function startEdit(i) {
     }
   }
   document.getElementById('f-value').value     = p.value    || '250';
-  const ptVal = p.plaintext || (q.plaintext !== '(no plaintext)' ? q.plaintext : '') || '';
-  document.getElementById('f-plaintext').value = ptVal;
+  document.getElementById('f-plaintext').value = p.plaintext || q.plaintext || '';
   document.getElementById('f-bonus').checked   = p.bonus    || false;
   ['key1','key2','key3','key4','hint_type','hint'].forEach(function(k) {
     const el = document.getElementById('f-' + k);
@@ -736,7 +735,7 @@ async function saveEdit() {
       return;
     }
     const label = payload.cipher + ' [' + payload.value + 'pt]' + (payload.bonus ? ' *' : '');
-    const sub = document.getElementById('f-plaintext').value.trim() || payload.plaintext || '(no plaintext)';
+    const sub = payload.plaintext || '(no plaintext)';
     questions[editingIndex] = {
       latex: data.latex, cipher: payload.cipher, plaintext: sub, label, bonus: payload.bonus,
       answer: data.answer, answer_bold: data.answer_bold,
@@ -885,7 +884,7 @@ function switchLeftTab(tab) {
 
 function goHome() { window.location.href = window.location.protocol + '//' + window.location.host + '/'; }
 
-let currentTestId = localStorage.getItem('testId') || null;
+let currentTestId = sessionStorage.getItem('testId') || null;
 let saveTimer = null;
 
 async function loadTestData() {
