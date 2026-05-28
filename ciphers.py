@@ -452,11 +452,15 @@ def fractionatedFormatter(s, keyword, crib, value, hint_type, hint, bonus):
 # ── Hill ──────────────────────────────────────────────────────────────────────
 
 def hillCreater(s, keyword, value, bonus):
+    from math import gcd
     s = re.sub(r'[^a-zA-Z]','',s).upper()
     keyword = keyword.upper().replace(" ","")
     z = [ord(c)-65 for c in keyword]
 
     if len(keyword)==4:
+        det2 = (z[0]*z[3] - z[1]*z[2]) % 26
+        if gcd(det2, 26) != 1:
+            raise ValueError(f"Hill 2x2 keyword '{keyword}' has determinant {det2} which is not coprime with 26. Try a different keyword.")
         matrix = (f"\\[\n\\begin{{pmatrix}}{keyword[0]}&{keyword[1]}\\\\{keyword[2]}&{keyword[3]}\\end{{pmatrix}}"
                   f" = \\begin{{pmatrix}}{z[0]}&{z[1]}\\\\{z[2]}&{z[3]}\\end{{pmatrix}}\n\\]")
         c = [ord(c)-65 for c in s]
@@ -469,7 +473,10 @@ def hillCreater(s, keyword, value, bonus):
         a=(z[4]*z[8]-z[5]*z[7])%26; b=-(z[3]*z[8]-z[5]*z[6])%26; cc=(z[3]*z[7]-z[4]*z[6])%26
         d=-(z[1]*z[8]-z[2]*z[7])%26; ee=(z[0]*z[8]-z[2]*z[6])%26; f=-(z[0]*z[7]-z[1]*z[6])%26
         g=(z[1]*z[5]-z[2]*z[4])%26; h=-(z[0]*z[5]-z[2]*z[3])%26; ii=(z[0]*z[4]-z[1]*z[3])%26
-        det=pow((a*z[0]+b*z[1]+cc*z[2])%26,-1,26)
+        det3 = (a*z[0]+b*z[1]+cc*z[2]) % 26
+        if gcd(det3, 26) != 1:
+            raise ValueError(f"Hill 3x3 keyword '{keyword}' has determinant {det3} which is not coprime with 26. Try a different keyword.")
+        det=pow(det3,-1,26)
         w=[(x*det)%26 for x in [a,d,g,b,ee,h,cc,f,ii]]
         matrix = (f"\\begin{{align*}}\n\\begin{{pmatrix}}{keyword[0]}&{keyword[1]}&{keyword[2]}\\\\"
                   f"{keyword[3]}&{keyword[4]}&{keyword[5]}\\\\{keyword[6]}&{keyword[7]}&{keyword[8]}\\end{{pmatrix}}"
@@ -548,7 +555,7 @@ def nihilistFormatter(s, key, pk, bs, value, ntype, hint_type, hint, bonus):
         q=f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Nihilist Substitution}} cipher.{bonus_text}"
 
     nih_table=(
-        "\n{\\renewcommand{\\arraystretch}{1.2}\n\\begin{tabular}{|>{\\centering\\arraybackslash}p{18pt}|>{\\centering\\arraybackslash}p{18pt}|>{\\centering\\arraybackslash}p{18pt}|>{\\centering\\arraybackslash}p{18pt}|>{\\centering\\arraybackslash}p{18pt}|>{\\centering\\arraybackslash}p{18pt}|}\n"
+        "\n{\\renewcommand{\\arraystretch}{1.2}\n\\begin{tabular}{|C{18pt}|C{18pt}|C{18pt}|C{18pt}|C{18pt}|C{18pt}|}\n"
         "\\hline\n&1&2&3&4&5  \\\\\n\\hline\n"
         "1&&&&&  \\\\\n\\hline\n2&&&&&  \\\\\n\\hline\n3&&&&&  \\\\\n\\hline\n4&&&&&  \\\\\n\\hline\n5&&&&&  \\\\\n\\hline\n"
         "\\end{tabular}}\n"
