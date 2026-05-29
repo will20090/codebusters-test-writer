@@ -1,30 +1,59 @@
-from flask import Flask, request, jsonify, send_file, session, render_template
+from flask import Flask, request, jsonify, send_file, session
 import subprocess, tempfile, os, json, traceback, shutil, sys, datetime, uuid
 from werkzeug.security import generate_password_hash, check_password_hash
-import psycopg2
-from psycopg2.extras import RealDictCursor
 
 sys.path.insert(0, os.path.dirname(__file__))
 import ciphers
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'codebusters-secret-key-change-this')
-app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=3650)
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = True
+app.secret_key = 'codebusters-secret-key-change-this'
 
-BASE = os.path.dirname(__file__)
+BASE      = os.path.dirname(__file__)
+DATA_DIR  = os.path.join(BASE, 'data')
+TESTS_DIR = os.path.join(DATA_DIR, 'tests')
+USERS_FILE = os.path.join(DATA_DIR, 'users.json')
 
-# -- Database --
+def ensure():
+    os.makedirs(TESTS_DIR, exist_ok=True)
+    if not os.path.exists(USERS_FILE):
+        with open(USERS_FILE, 'w') as f: json.dump({}, f)
 
-def get_db():
-    conn = psycopg2.connect(
-        os.environ['DATABASE_URL'],
-        sslmode='require',
-        connect_timeout=10
-    )
-    conn.autocommit = True
-    return conn
+def load_users():
+    ensure()
+    with open(USERS_FILE) as f: return json.load(f)
+
+def save_users(u):
+    with open(USERS_FILE, 'w') as f: json.dump(u, f, indent=2)
+
+def user_dir(uid):
+    d = os.path.join(TESTS_DIR, uid)
+    os.makedirs(d, exist_ok=True)
+    return d
+
+def tpath(uid, tid): return os.path.join(user_dir(uid), tid + '.json')
+
+def load_test(uid, tid):
+    p = tpath(uid, tid)
+    return json.load(open(p)) if os.path.exists(p) else None
+
+def save_test(uid, t):
+    t['modified'] = datetime.datetime.now().isoformat()
+    with open(tpath(uid, t['id']), 'w') as f: json.dump(t, f, indent=2)
+
+def delete_test(uid, tid):
+    p = tpath(uid, tid)
+    if os.path.exists(p): os.remove(p)
+
+def list_tests(uid):
+    d = user_dir(uid)
+    tests = []
+    for fn in os.listdir(d):
+        if fn.endswith('.json'):
+            with open(os.path.join(d, fn)) as f: t = json.load(f)
+            tests.append({'id': t['id'], 'name': t['name'],
+                          'created': t.get('created',''), 'modified': t.get('modified',''),
+                          'count': len(t.get('questions',[]))})
+    return sorted(tests, key=lambda x: x['modified'], reverse=True)
 
 def nid(): return uuid.uuid4().hex[:12]
 
@@ -36,7 +65,7 @@ def require_login():
         return jsonify({'error': 'Not logged in'}), 401
     return None
 
-# -- Auth routes --
+# ── Auth routes ───────────────────────────────────────────────────────────────
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -49,19 +78,17 @@ def register():
         return jsonify({'error': 'Username must be at least 3 characters'}), 400
     if len(password) < 4:
         return jsonify({'error': 'Password must be at least 4 characters'}), 400
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute('SELECT id FROM users WHERE username = %s', (username,))
-    if cur.fetchone():
-        cur.close(); conn.close()
+    users = load_users()
+    if username in users:
         return jsonify({'error': 'Username already taken'}), 400
     uid = nid()
-    cur.execute(
-        'INSERT INTO users (id, username, password, created) VALUES (%s, %s, %s, %s)',
-        (uid, username, generate_password_hash(password), datetime.datetime.now().isoformat())
-    )
-    cur.close(); conn.close()
-    session.permanent = True
+    users[username] = {
+        'id': uid,
+        'username': username,
+        'password': generate_password_hash(password),
+        'created': datetime.datetime.now().isoformat()
+    }
+    save_users(users)
     session['uid'] = uid
     session['username'] = username
     return jsonify({'ok': True, 'username': username})
@@ -73,17 +100,14 @@ def login():
     password = data.get('password','').strip()
     if not username or not password:
         return jsonify({'error': 'Username and password required'}), 400
-    conn = get_db()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute('SELECT * FROM users WHERE username = %s', (username,))
-    user = cur.fetchone()
-    cur.close(); conn.close()
-    if not user or not check_password_hash(user['password'], password):
+    users = load_users()
+    if username not in users:
         return jsonify({'error': 'Invalid username or password'}), 400
-    session.permanent = True
-    session['uid'] = user['id']
-    session['username'] = user['username']
-    return jsonify({'ok': True, 'username': user['username']})
+    if not check_password_hash(users[username]['password'], password):
+        return jsonify({'error': 'Invalid username or password'}), 400
+    session['uid'] = users[username]['id']
+    session['username'] = username
+    return jsonify({'ok': True, 'username': username})
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
@@ -96,21 +120,13 @@ def me():
         return jsonify({'uid': current_user(), 'username': session.get('username')})
     return jsonify({'uid': None, 'username': None})
 
-# -- Test routes --
+# ── Test routes ───────────────────────────────────────────────────────────────
 
 @app.route('/api/tests', methods=['GET'])
 def get_tests():
     err = require_login()
     if err: return err
-    conn = get_db()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute(
-        'SELECT id, name, created, modified, jsonb_array_length(questions) as count FROM tests WHERE user_id = %s ORDER BY modified DESC',
-        (current_user(),)
-    )
-    tests = cur.fetchall()
-    cur.close(); conn.close()
-    return jsonify([dict(t) for t in tests])
+    return jsonify(list_tests(current_user()))
 
 @app.route('/api/tests', methods=['POST'])
 def create_test():
@@ -119,52 +135,34 @@ def create_test():
     data = request.get_json()
     name = data.get('name','').strip()
     if not name: return jsonify({'error': 'Test name required'}), 400
-    tid = nid()
-    now = datetime.datetime.now().isoformat()
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        'INSERT INTO tests (id, user_id, name, created, modified, settings, questions) VALUES (%s, %s, %s, %s, %s, %s, %s)',
-        (tid, current_user(), name, now, now, json.dumps({}), json.dumps([]))
-    )
-    cur.close(); conn.close()
-    return jsonify({'id': tid, 'name': name, 'created': now, 'modified': now, 'settings': {}, 'questions': []})
+    t = {'id': nid(), 'name': name, 'created': datetime.datetime.now().isoformat(),
+         'modified': '', 'settings': {}, 'questions': []}
+    save_test(current_user(), t)
+    return jsonify(t)
 
 @app.route('/api/tests/<tid>', methods=['GET'])
 def get_test(tid):
     err = require_login()
     if err: return err
-    conn = get_db()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute('SELECT * FROM tests WHERE id = %s AND user_id = %s', (tid, current_user()))
-    t = cur.fetchone()
-    cur.close(); conn.close()
+    t = load_test(current_user(), tid)
     if not t: return jsonify({'error': 'Not found'}), 404
-    return jsonify(dict(t))
+    return jsonify(t)
 
 @app.route('/api/tests/<tid>', methods=['PUT'])
 def update_test(tid):
     err = require_login()
     if err: return err
     data = request.get_json()
-    now = datetime.datetime.now().isoformat()
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        'UPDATE tests SET settings = %s, questions = %s, modified = %s WHERE id = %s AND user_id = %s',
-        (json.dumps(data.get('settings', {})), json.dumps(data.get('questions', [])), now, tid, current_user())
-    )
-    cur.close(); conn.close()
+    t = load_test(current_user(), tid) or {'id': tid, 'created': datetime.datetime.now().isoformat()}
+    t.update({k: data[k] for k in ('name','settings','questions') if k in data})
+    save_test(current_user(), t)
     return jsonify({'ok': True})
 
 @app.route('/api/tests/<tid>', methods=['DELETE'])
 def del_test(tid):
     err = require_login()
     if err: return err
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute('DELETE FROM tests WHERE id = %s AND user_id = %s', (tid, current_user()))
-    cur.close(); conn.close()
+    delete_test(current_user(), tid)
     return jsonify({'ok': True})
 
 @app.route('/api/tests/<tid>/rename', methods=['POST'])
@@ -173,11 +171,13 @@ def rename_test(tid):
     if err: return err
     name = request.get_json().get('name','').strip()
     if not name: return jsonify({'error': 'Name required'}), 400
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute('UPDATE tests SET name = %s WHERE id = %s AND user_id = %s', (name, tid, current_user()))
-    cur.close(); conn.close()
+    t = load_test(current_user(), tid)
+    if not t: return jsonify({'error': 'Not found'}), 404
+    t['name'] = name
+    save_test(current_user(), t)
     return jsonify({'ok': True})
+
+# ── Cipher dispatcher ─────────────────────────────────────────────────────────
 
 KEYWORD_CIPHERS = {'ARISTOCRAT', 'PATRISTOCRAT', 'XENOCRYPT'}
 
@@ -309,12 +309,12 @@ def build_latex(settings, questions_data, is_key=False):
     import re as _re
     tq_clean = _re.sub(r'[^a-zA-Z ]', '', tqplaintext).upper()
     try:
-        tq_encoded_raw = ciphers.aristo_letter_replacement(tq_clean)
+        tq_encoded_raw = ciphers.aristo_letter_replacement(tqplaintext.upper())
         tqcipher = ciphers.aristo_format_sentence(tq_encoded_raw)
         tq_letters_only = _re.sub(r'[^A-Z]', '', tq_encoded_raw)
         tq_freq_row = '&'.join(str(tq_letters_only.count(chr(i+65))) for i in range(26))
     except Exception:
-        tqcipher = tq_clean
+        tqcipher = tqplaintext.upper()
         tq_freq_row = '&'.join([''] * 26)
 
     img_latex = r'\fbox{\parbox[c][6cm][c]{10cm}{\centering\small xcoverart.png}}'
@@ -495,12 +495,7 @@ Rank: \underline{{\hspace{{1.5cm}}}}
 {"".join(answer_lines)}\end{{questions}}
 """
     else:
-        # Insert \clearpage every 2 questions to prevent page splits
-        questions_latex_list = []
-        for idx, q in enumerate(questions_data):
-            questions_latex_list.append(get_latex(q))
-            if (idx + 1) % 2 == 0 and idx < len(questions_data) - 1:
-                questions_latex_list.append('\n\\clearpage\n')
+        questions_latex_list = [get_latex(q) for q in questions_data]
         middle_section = rf"""
 {scoring_page}
 \newpage
@@ -616,11 +611,12 @@ def download():
 
 @app.route('/')
 def home():
-    return render_template('home.html')
+    return send_file(os.path.join(BASE, 'templates', 'home.html'))
 
 @app.route('/builder')
 def builder():
-    return render_template('builder.html')
+    return send_file(os.path.join(BASE, 'templates', 'builder.html'))
 
 if __name__ == '__main__':
+    ensure()
     app.run(debug=True, port=5000)
