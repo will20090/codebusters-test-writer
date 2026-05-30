@@ -117,7 +117,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
           <label>Bonus Question Numbers<input id="s-bonus_nums" readonly style="background:#f0f0f0;color:#555;cursor:default;" placeholder="Auto-filled from bonus questions"></label>
           <label style="grid-column:1/-1">Writers (names separated by commas)<input id="s-writers" value="INSERT WRITERS" oninput="settingsChanged()"></label>
           <label style="grid-column:1/-1">TQ Plaintext<textarea id="s-tqcipher" oninput="settingsChanged()" placeholder="Enter the plaintext phrase"></textarea></label>
-          <label style="grid-column:1/-1">Cover Image
+          <label style="grid-column:1/-1">Cover Image (jpg and png both work)
             <input type="file" id="s-cover-file" accept="image/*" onchange="coverImageChanged(this)">
             <span id="s-cover-status" style="font-size:11px;color:#888"></span>
           </label>
@@ -142,10 +142,8 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
                 <option value="COLUMNAR">Complete Columnar</option>
                 <option value="CRYPTARITHM">Cryptarithm</option>
                 <option value="FRACMORSE">Fractionated Morse</option>
-                <option value="HILL">Hill</option>
                 <option value="NIHILIST">Nihilist</option>
                 <option value="PORTA">Porta</option>
-                <option value="AFFINE">Affine</option>
                 <option value="CHECKERBOARD">Checkerboard</option>
               </select>
             </label>
@@ -194,7 +192,10 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 
         <div id="list-header">
           <span id="list-count">0 questions</span>
-          <span>drag rows to reorder</span>
+          <span style="display:flex;align-items:center;gap:8px;">
+            <button onclick="randomizeOrder()" style="background:#444;color:#eee;border:1px solid #666;padding:2px 8px;cursor:pointer;font-family:monospace;font-size:11px;">randomize order</button>
+            <span>drag rows to reorder</span>
+          </span>
         </div>
         <div id="question-list"></div>
       </div><!-- end panel-questions -->
@@ -348,9 +349,9 @@ const CIPHER_TYPES = {
   PORTA:        ['DECODE','CRIB'],
   COLUMNAR:     ['DECODE'],
   NIHILIST:     ['DECODE','CRIB'],
-  HILL:         ['DECODE'],
+  //HILL:         ['DECODE'],
   CHECKERBOARD: ['DECODE','CRIB'],
-  AFFINE:       ['DECODE','CRIB'],
+  //AFFINE:       ['DECODE','CRIB'],
   ATBASH:       ['DECODE'],
   CAESAR:       ['DECODE'],
 };
@@ -908,6 +909,15 @@ function deleteQuestion(i) {
   questions.splice(i, 1);
   renderList(); previewDirty = true; scheduleSave();
   setStatus('Question deleted. Click Refresh Preview to update.');
+}
+
+function randomizeOrder() {
+  for (let i = questions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [questions[i], questions[j]] = [questions[j], questions[i]];
+  }
+  renderList(); previewDirty = true; scheduleSave();
+  setStatus('Randomized order. Click Refresh Preview to update.');
 }
 
 function escHtml(s) {

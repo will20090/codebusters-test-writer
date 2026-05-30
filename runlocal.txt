@@ -1,0 +1,1 @@
+$env:DATABASE_URL="postgresql://postgres.oqruyiuyxzlujwzekcsw:680508740401Wl!@aws-1-us-west-1.pooler.supabase.com:6543/postgres"; python app.py
