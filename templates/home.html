@@ -266,9 +266,9 @@ async function loadTests() {
       </div>
       <div class="tc-actions">
         <button onclick="openTest('${t.id}')">Open</button>
-        ${t.owned ? `<button onclick="renameTest('${t.id}','${esc(t.name)}')">Rename</button>` : ''}
-        ${t.owned ? `<button onclick="openShareModal('${t.id}')">Share</button>` : '<span style="font-size:11px;color:#888;padding:3px 6px;">Shared with you</span>'}
-        ${t.owned ? `<button class="del-btn" onclick="deleteTest('${t.id}','${esc(t.name)}')">Delete</button>` : ''}
+        ${t.owned ? '<button onclick="renameTest(\''+t.id+'\',\''+esc(t.name)+'\')">Rename</button>' : ''}
+        ${t.owned ? '<button onclick="openShareModal(\''+t.id+'\')">Share</button>' : '<span style="font-size:11px;color:#888;padding:3px 6px;">Shared with you</span>'}
+        ${t.owned ? '<button class="del-btn" onclick="deleteTest(\''+t.id+'\',\''+esc(t.name)+'\')">Delete</button>' : ''}
       </div>
     `;
     list.appendChild(row);
