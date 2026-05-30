@@ -496,7 +496,7 @@ def hillCreater(s, keyword, value, bonus):
 # ── Nihilist ──────────────────────────────────────────────────────────────────
 
 def nihilist_alphabet(kw):
-    kw=kw.lower().replace('j','i'); seen=set(); out=[]
+    kw=kw.lower(); seen=set(); out=[]
     for c in kw:
         if c not in seen and c.isalpha(): seen.add(c); out.append(c)
     for c in 'abcdefghiklmnopqrstuvwxyz':
@@ -534,8 +534,8 @@ def _nihilist_format_output(encoded, bs):
         return y
 
 def nihilistFormatter(s, key, pk, bs, value, ntype, hint_type, hint, bonus):
-    keyf=key.upper().replace("J","I").replace(" ","")
-    s=re.sub(r'[^a-zA-Z]','',s).upper().replace("J","I")
+    keyf=key.upper().replace(" ","").replace(" ","")
+    s=re.sub(r'[^a-zA-Z]','',s).upper()
     pkf=pk.upper().replace("J","I").replace(" ","")
     b=nihilist_alphabet(pkf).upper()
     pk_dict={b[i]:(i//5+1)*10+(i%5+1) for i in range(25)}
@@ -543,7 +543,7 @@ def nihilistFormatter(s, key, pk, bs, value, ntype, hint_type, hint, bonus):
     encoded=[]
     x=0
     for let in s:
-        encoded.append(pk_dict[let]+pk_dict[keyf[x]]); x=(x+1)%len(keyf)
+        encoded.append(pk_dict[let.replace('J','I')]+pk_dict[keyf[x].replace('J','I')]); x=(x+1)%len(keyf)
 
     y = _nihilist_format_output(encoded, bs_int)
 
@@ -552,7 +552,9 @@ def nihilistFormatter(s, key, pk, bs, value, ntype, hint_type, hint, bonus):
         q=(f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Nihilist Substitution}} cipher "
            f"with a keyword of \\textbf{{{key}}} and a polybius key of \\textbf{{{pk}}}.{bonus_text}")
     elif ntype=="CRIB":
-        crib_c=re.sub(r'[^A-IK-Z]','',hint.upper().replace('J','I'))
+        crib_c=re.sub(r'[^A-Z]','',hint.upper())
+        if crib_c not in s:
+           raise ValueError(f"Crib '{crib_c}' not found in plaintext '{s}'")
         try: ht=detect_hint_type(s,crib_c)
         except: ht="Start Crib"
         if ht=="Start Crib":
@@ -628,6 +630,8 @@ def porta_formatter(s, keyword, bs, value, ptype, hint_type, hint, bonus):
            f"with a keyword of \\textbf{{{keyword}}}.{bonus_text}")
     elif ptype=="CRIB":
         crib_c=re.sub(r'[^A-Z]','',hint.upper())
+        if crib_c not in s:
+            raise ValueError(f"Crib '{crib_c}' not found in plaintext '{s}'")
         try: ht=detect_hint_type(s,crib_c)
         except: ht="Start Crib"
         enc_clean=''.join(encoded)
@@ -797,7 +801,7 @@ def affine_formatter(s, a, b, bs, value, atype, hint, bonus):
 # ── Checkerboard ──────────────────────────────────────────────────────────────
 
 def cb_alphabet(kw):
-    kw=kw.lower().replace('j','i'); seen=set(); out=[]
+    kw=kw.lower(); seen=set(); out=[]
     for c in kw:
         if c not in seen and c.isalpha(): seen.add(c); out.append(c)
     for c in 'abcdefghiklmnopqrstuvwxyz':
@@ -807,9 +811,9 @@ def cb_alphabet(kw):
 def _cb_encode_raw(hkey, vkey, alph, s):
     """Encode s and return list of two-char code pairs."""
     hkey=hkey.upper(); vkey=vkey.upper(); alph=alph.upper()
-    s=re.sub(r'[^a-zA-Z]','',s).upper().replace('J','I')
+    s=re.sub(r'[^a-zA-Z]','',s).upper()
     pk={alph[j+i*5]:vkey[i]+hkey[j] for i in range(5) for j in range(5)}
-    return [pk[c] for c in s]
+    return [pk[c.replace('J','I')] for c in s]
 
 def cb_encode(hkey, vkey, alph, s, bs):
     """Encode and format with block size bs. bs=0 means no grouping."""
@@ -858,9 +862,11 @@ def checkerboarddecode(s, hkey, vkey, pk, bs, value, bonus):
             f"\n \\Large{{\n\\begin{{verbatim}}\n{v}\n\n\\end{{verbatim}}}}\n{cb_table()}\n\\vfill\n\\uplevel{{\\hrulefill}}")
 
 def checkerboardcrib(s, hkey, vkey, pk, crib, bs, value, bonus):
-    s=re.sub(r'[^a-zA-Z]','',s).upper().replace('J','I')
+    s=re.sub(r'[^a-zA-Z]','',s).upper()
     alph=cb_alphabet(pk); v=cb_encode(hkey, vkey, alph, s, bs)
-    crib_c=re.sub(r'[^A-IK-Z]','',crib.upper().replace('J','I'))
+    crib_c=re.sub(r'[^A-Z]','',crib.upper())
+    if crib_c not in s:
+        raise ValueError(f"Crib '{crib_c}' not found in plaintext '{s}'")
     pk_dict={alph.upper()[j+i*5]:vkey.upper()[i]+hkey.upper()[j] for i in range(5) for j in range(5)}
     try:
         ht=detect_hint_type(s,crib_c)
