@@ -308,14 +308,14 @@ const CIPHER_FIELDS = {
   NIHILIST:     [
     {id:'key1',label:'Keyword'},
     {id:'key2',label:'Polybius key'},
-    {id:'key3',label:'Block size (0 = no blocks, default 5)'}
+    {id:'key3',label:'Block size (0 = no blocks, blank = default 5)'}
   ],
 
   // ── Porta: always show keyword, block size ────────────────────────────────
   // Crib (key4) injected dynamically only when type=CRIB
   PORTA:        [
     {id:'key1',label:'Keyword'},
-    {id:'key3',label:'Block size (0 = no blocks, default 5)'}
+    {id:'key3',label:'Block size (0 = no blocks, blank = default 5)'}
   ],
 
   // ── Affine: always show a, b, block size ─────────────────────────────────
@@ -323,7 +323,7 @@ const CIPHER_FIELDS = {
   AFFINE:       [
     {id:'key1',label:'a (must be coprime with 26)'},
     {id:'key2',label:'b'},
-    {id:'key3',label:'Block size (0 = no blocks, default 5)'}
+    {id:'key3',label:'Block size (0 = no blocks, blank = default 5)'}
   ],
 
   // ── Checkerboard: always show H-key, V-key, polybius keyword, block size ─
@@ -333,7 +333,7 @@ const CIPHER_FIELDS = {
     {id:'key1',label:'H-key (5 letters)'},
     {id:'key2',label:'V-key (5 letters)'},
     {id:'key3',label:'Polybius keyword'},
-    {id:'key4',label:'Block size (0 = no blocks, default 5)'}
+    {id:'key4',label:'Block size (0 = no blocks, blank = default 5)'}
   ],
 };
 

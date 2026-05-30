@@ -546,7 +546,7 @@ Replacement&&&&&&&&&&&&&&&&&&&&&&&&&&\\
 {"".join(questions_latex_list)}
 \end{{questions}}
 """
-
+    col_type = r'\newcolumntype{Z}[1]{>{\centering\arraybackslash}p{#1}}'
     return rf"""\documentclass[addpoints]{{exam}}
 \usepackage[english]{{babel}}
 \usepackage[utf8]{{inputenc}}
@@ -566,7 +566,7 @@ Replacement&&&&&&&&&&&&&&&&&&&&&&&&&&\\
 \usepackage{{enumitem}}
 \usepackage{{mdframed}}
 
-\newcolumntype{{Z}}[1]{{>{{centering\arraybackslash}}p{{#1}}}}
+{col_type}
 \renewcommand{{\questionshook}}{{\setlength{{\leftmargin}}{{20pt}}}}
 \renewcommand{{\choiceshook}}{{\setlength{{\leftmargin}}{{30pt}}}}
 \hypersetup{{colorlinks=true,linkcolor=teal,filecolor=teal,urlcolor=teal}}

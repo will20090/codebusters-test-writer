@@ -503,24 +503,22 @@ def nihilist_alphabet(kw):
         if c not in seen: out.append(c)
     return ''.join(out)
 
-def _nihilist_format_output(encoded, bs):
-    """Format nihilist encoded numbers.
-    bs=0 means no grouping (just space-separated numbers on one long line, wrapped at 52 chars).
-    bs>0 means group by bs numbers per group, with line breaks every few groups.
-    """
+def _nihilist_format_output(encoded, bs, s=""):
     if bs == 0:
-        # No block grouping: all numbers space-separated, wrapped at ~52 chars
-        y = ""
-        line = ""
-        for num_str in [str(n) for n in encoded]:
-            candidate = (line + " " + num_str).lstrip()
-            if len(candidate) > 52:
-                y += line.rstrip() + "\n\n\n"
-                line = num_str
+        words = re.sub(r'[^a-zA-Z ]', '', s).upper().split()
+        word_lengths = [len(w) for w in words]
+        lines = []; line = ""; length = 0; idx = 0
+        for wlen in word_lengths:
+            nums = [str(encoded[idx+i]) for i in range(wlen)]
+            idx += wlen
+            token = ' '.join(nums) + "   "
+            if length + len(token) > 52:
+                lines.append(line.rstrip())
+                line = token; length = len(token)
             else:
-                line = candidate
-        y += line.rstrip()
-        return y
+                line += token; length += len(token)
+        if line.rstrip(): lines.append(line.rstrip())
+        return "\n\n\n".join(lines)
     else:
         y = ""; z = 0
         for i in range(len(encoded)):
@@ -545,7 +543,7 @@ def nihilistFormatter(s, key, pk, bs, value, ntype, hint_type, hint, bonus):
     for let in s:
         encoded.append(pk_dict[let.replace('J','I')]+pk_dict[keyf[x].replace('J','I')]); x=(x+1)%len(keyf)
 
-    y = _nihilist_format_output(encoded, bs_int)
+    y = _nihilist_format_output(encoded, bs_int, s)
 
     bonus_text=" \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
     if ntype=="DECODE":
@@ -572,30 +570,30 @@ def nihilistFormatter(s, key, pk, bs, value, ntype, hint_type, hint, bonus):
         q=f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Nihilist Substitution}} cipher.{bonus_text}"
 
     nih_table=(
-        "\n{\\renewcommand{\\arraystretch}{1.2}\n\\begin{tabular}{|c|Z{18pt}|Z{18pt}|Z{18pt}|Z{18pt}|Z{18pt}|}\n"
+        "\n{\\renewcommand{\\arraystretch}{1.2}\n\\begin{tabular}{|Z{18pt}|Z{18pt}|Z{18pt}|Z{18pt}|Z{18pt}|Z{18pt}|}\n"
         "\\hline\n&1&2&3&4&5  \\\\\n\\hline\n"
-        "1&&&&&  \\\\\n\\hline\n2&&&&&  \\\\\n\\hline\n3&&&&&  \\\\\n\\hline\n4&&&&&  \\\\\n\\hline\n5&&&&&  \\\\\n\\hline\n"
+        "\\centering 1&&&&&  \\\\\n\\hline\n\\centering 2&&&&&  \\\\\n\\hline\n\\centering 3&&&&&  \\\\\n\\hline\n\\centering 4&&&&&  \\\\\n\\hline\n\\centering 5&&&&&  \\\\\n\\hline\n"
         "\\end{tabular}}\n"
     )
     return q+f"\n\n \\Large{{\n\\begin{{verbatim}}\n{y}\n\n\\end{{verbatim}}}}\n{nih_table}\n\\vfill\n\\uplevel{{\\hrulefill}}"
 
 # ── Porta ─────────────────────────────────────────────────────────────────────
 
-def _porta_format_output(enc, bs):
-    """Format porta encoded string.
-    bs=0: preserve letter-level output with original spacing (no block grouping).
-    bs>0: group into blocks of bs letters, wrap at 52 chars.
-    """
+def _porta_format_output(enc, bs, s=""):
     if bs == 0:
-        # Space-separated single chars, wrapped at 52 chars
-        out = ""; line = ""; length = 0
-        for ch in enc:
-            if length + 2 > 52:
-                out += line.rstrip() + "\n\n\n"; line = ch + " "; length = 2
+        words = re.sub(r'[^a-zA-Z ]', '', s).upper().split()
+        word_lengths = [len(w) for w in words]
+        lines = []; line = ""; length = 0; idx = 0
+        for wlen in word_lengths:
+            token = ' '.join(enc[idx:idx+wlen]) + "   "
+            idx += wlen
+            if length + len(token) > 52:
+                lines.append(line.rstrip())
+                line = token; length = len(token)
             else:
-                line += ch + " "; length += 2
-        out += line.rstrip()
-        return out
+                line += token; length += len(token)
+        if line.rstrip(): lines.append(line.rstrip())
+        return "\n\n\n".join(lines)
     else:
         spaced = ""
         for i in range(len(enc)):
@@ -622,7 +620,7 @@ def porta_formatter(s, keyword, bs, value, ptype, hint_type, hint, bonus):
         encoded.append(chr(v2+65)); x=(x+1)%len(kw)
     enc=''.join(encoded)
 
-    out = _porta_format_output(enc, bs)
+    out = _porta_format_output(enc, bs, s)
 
     bonus_text=" \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
     if ptype=="DECODE":
@@ -743,20 +741,21 @@ def xeno_creator(s, value, xtype, hint_type, hint, alph="", keyword="", shift=""
 
 # ── Affine ────────────────────────────────────────────────────────────────────
 
-def _affine_format_output(encoded_str, bs):
-    """Format affine encoded string.
-    bs=0: space-separated single chars wrapped at 52 chars.
-    bs>0: group into blocks of bs, wrapped at 52 chars.
-    """
+def _affine_format_output(encoded_str, bs, s=""):
     if bs == 0:
-        out = ""; line = ""; length = 0
-        for ch in encoded_str:
-            if length + 2 > 52:
-                out += line.rstrip() + "\n\n\n"; line = ch + " "; length = 2
+        words = re.sub(r'[^a-zA-Z ]', '', s).upper().split()
+        word_lengths = [len(w) for w in words]
+        lines = []; line = ""; length = 0; idx = 0
+        for wlen in word_lengths:
+            token = ' '.join(encoded_str[idx:idx+wlen]) + "   "
+            idx += wlen
+            if length + len(token) > 52:
+                lines.append(line.rstrip())
+                line = token; length = len(token)
             else:
-                line += ch + " "; length += 2
-        out += line.rstrip()
-        return out
+                line += token; length += len(token)
+        if line.rstrip(): lines.append(line.rstrip())
+        return "\n\n\n".join(lines)
     else:
         spaced = ""
         for i in range(len(encoded_str)):
@@ -777,7 +776,7 @@ def affine_formatter(s, a, b, bs, value, atype, hint, bonus):
     s=re.sub(r'[^a-zA-Z]','',s).upper()
     encoded=''.join(chr(((ord(c)-65)*a+b)%26+65) for c in s)
 
-    out = _affine_format_output(encoded, bs)
+    out = _affine_format_output(encoded, bs, s)
 
     bonus_text=" \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
     if atype=="DECODE":
@@ -816,21 +815,24 @@ def _cb_encode_raw(hkey, vkey, alph, s):
     return [pk[c.replace('J','I')] for c in s]
 
 def cb_encode(hkey, vkey, alph, s, bs):
-    """Encode and format with block size bs. bs=0 means no grouping."""
-    pairs = _cb_encode_raw(hkey, vkey, alph, s)
+    hkey=hkey.upper(); vkey=vkey.upper(); alph=alph.upper()
     bs = int(bs)
     if bs == 0:
-        # No grouping: all pairs space-separated, wrapped at ~52 chars
-        y = ""; line = ""; length = 0
-        for pair in pairs:
-            token = pair + " "
+        pk={alph[j+i*5]:vkey[i]+hkey[j] for i in range(5) for j in range(5)}
+        words = re.sub(r'[^a-zA-Z ]', '', s).upper().split()
+        lines = []; line = ""; length = 0
+        for word in words:
+            encoded_word = ' '.join(pk[c.replace('J','I')] for c in word)
+            token = encoded_word + "   "
             if length + len(token) > 52:
-                y += line.rstrip() + "\n\n\n"; line = token; length = len(token)
+                lines.append(line.rstrip())
+                line = token; length = len(token)
             else:
                 line += token; length += len(token)
-        y += line.rstrip()
-        return y
+        if line.rstrip(): lines.append(line.rstrip())
+        return "\n\n\n".join(lines)
     else:
+        pairs = _cb_encode_raw(hkey, vkey, alph, s)
         y = ""; z = 0
         for i in range(len(pairs)):
             y += str(pairs[i]) + " "
