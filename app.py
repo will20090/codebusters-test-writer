@@ -105,12 +105,19 @@ def get_tests():
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(
-        'SELECT id, name, created, modified, jsonb_array_length(questions) as count FROM tests WHERE user_id = %s ORDER BY modified DESC',
+        'SELECT id, name, created, modified, jsonb_array_length(questions) as count, true as owned FROM tests WHERE user_id = %s',
         (current_user(),)
     )
-    tests = cur.fetchall()
+    owned = cur.fetchall()
+    cur.execute(
+        '''SELECT t.id, t.name, t.created, t.modified, jsonb_array_length(t.questions) as count, false as owned
+           FROM tests t JOIN test_shares ts ON ts.test_id = t.id
+           WHERE ts.user_id = %s ORDER BY t.modified DESC''',
+        (current_user(),)
+    )
+    shared = cur.fetchall()
     cur.close(); conn.close()
-    return jsonify([dict(t) for t in tests])
+    return jsonify([dict(t) for t in owned] + [dict(t) for t in shared])
 
 @app.route('/api/tests', methods=['POST'])
 def create_test():
@@ -136,7 +143,7 @@ def get_test(tid):
     if err: return err
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute('SELECT * FROM tests WHERE id = %s AND user_id = %s', (tid, current_user()))
+    cur.execute('SELECT * FROM tests WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))', (tid, current_user(), current_user()))
     t = cur.fetchone()
     cur.close(); conn.close()
     if not t: return jsonify({'error': 'Not found'}), 404
@@ -151,8 +158,8 @@ def update_test(tid):
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
-        'UPDATE tests SET settings = %s, questions = %s, modified = %s WHERE id = %s AND user_id = %s',
-        (json.dumps(data.get('settings', {})), json.dumps(data.get('questions', [])), now, tid, current_user())
+        'UPDATE tests SET settings = %s, questions = %s, modified = %s WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))',
+        (json.dumps(data.get('settings', {})), json.dumps(data.get('questions', [])), now, tid, current_user(), current_user())
     )
     cur.close(); conn.close()
     return jsonify({'ok': True})
@@ -176,6 +183,51 @@ def rename_test(tid):
     conn = get_db()
     cur = conn.cursor()
     cur.execute('UPDATE tests SET name = %s WHERE id = %s AND user_id = %s', (name, tid, current_user()))
+    cur.close(); conn.close()
+    return jsonify({'ok': True})
+
+@app.route('/api/tests/<tid>/share', methods=['POST'])
+def share_test(tid):
+    err = require_login()
+    if err: return err
+    data = request.get_json()
+    username = data.get('username','').strip().lower()
+    if not username: return jsonify({'error': 'Username required'}), 400
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    # check target user exists
+    cur.execute('SELECT id FROM users WHERE username = %s', (username,))
+    target = cur.fetchone()
+    if not target: cur.close(); conn.close(); return jsonify({'error': 'User not found'}), 404
+    if target['id'] == current_user(): cur.close(); conn.close(); return jsonify({'error': 'Cannot share with yourself'}), 400
+    # check test belongs to current user
+    cur.execute('SELECT id FROM tests WHERE id = %s AND user_id = %s', (tid, current_user()))
+    if not cur.fetchone(): cur.close(); conn.close(); return jsonify({'error': 'Not found'}), 404
+    # insert share record (ignore if already exists)
+    cur.execute('INSERT INTO test_shares (test_id, user_id) VALUES (%s, %s) ON CONFLICT DO NOTHING', (tid, target['id']))
+    cur.close(); conn.close()
+    return jsonify({'ok': True})
+
+@app.route('/api/tests/<tid>/shares', methods=['GET'])
+def get_shares(tid):
+    err = require_login()
+    if err: return err
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('SELECT id FROM tests WHERE id = %s AND user_id = %s', (tid, current_user()))
+    if not cur.fetchone(): cur.close(); conn.close(); return jsonify({'error': 'Not found'}), 404
+    cur.execute('SELECT u.username FROM test_shares ts JOIN users u ON u.id = ts.user_id WHERE ts.test_id = %s', (tid,))
+    shares = [r['username'] for r in cur.fetchall()]
+    cur.close(); conn.close()
+    return jsonify(shares)
+
+@app.route('/api/tests/<tid>/share/<username>', methods=['DELETE'])
+def unshare_test(tid, username):
+    err = require_login()
+    if err: return err
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('DELETE FROM test_shares WHERE test_id = %s AND user_id = (SELECT id FROM users WHERE username = %s)', (tid, username))
     cur.close(); conn.close()
     return jsonify({'ok': True})
 

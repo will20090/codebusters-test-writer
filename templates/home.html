@@ -63,6 +63,8 @@ h3 { font-size: 13px; margin-bottom: 10px; color: #555; }
 #modal-actions button { flex: 1; padding: 6px; cursor: pointer; font-family: monospace; font-size: 13px; border: 1px solid #ccc; }
 #modal-ok { background: #222; color: #fff; border-color: #222; }
 #modal-ok:hover { background: #444; }
+
+
 </style>
 </head>
 <body>
@@ -118,6 +120,59 @@ h3 { font-size: 13px; margin-bottom: 10px; color: #555; }
 </div>
 
 <script>
+
+
+let shareTestId = null;
+
+async function openShareModal(tid) {
+  shareTestId = tid;
+  document.getElementById('share-err').textContent = '';
+  document.getElementById('share-input').value = '';
+  document.getElementById('share-modal-bg').style.display = 'flex';
+  await loadShareList();
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal-bg').style.display = 'none';
+  shareTestId = null;
+}
+
+async function loadShareList() {
+  const res = await fetch('/api/tests/' + shareTestId + '/shares');
+  const users = await res.json();
+  const div = document.getElementById('share-list');
+  if (users.length === 0) { div.innerHTML = '<span style="color:#888">Not shared with anyone yet.</span>'; return; }
+  div.innerHTML = users.map(u =>
+    `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;">
+      <span>${esc(u)}</span>
+      <button onclick="removeShare('${esc(u)}')" style="font-size:11px;border:1px solid #ccc;padding:2px 8px;cursor:pointer;background:none;font-family:monospace;">Remove</button>
+    </div>`
+  ).join('');
+}
+
+async function addShare() {
+  const username = document.getElementById('share-input').value.trim();
+  document.getElementById('share-err').textContent = '';
+  if (!username) return;
+  const res = await fetch('/api/tests/' + shareTestId + '/share', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username})
+  });
+  const data = await res.json();
+  if (data.error) { document.getElementById('share-err').textContent = data.error; return; }
+  document.getElementById('share-input').value = '';
+  await loadShareList();
+}
+
+async function removeShare(username) {
+  await fetch('/api/tests/' + shareTestId + '/share/' + username, {method: 'DELETE'});
+  await loadShareList();
+}
+
+document.getElementById('share-modal-bg').addEventListener('click', e => {
+  if (e.target === document.getElementById('share-modal-bg')) closeShareModal();
+});
+
 let authMode = 'login'; // 'login' | 'register'
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -211,8 +266,9 @@ async function loadTests() {
       </div>
       <div class="tc-actions">
         <button onclick="openTest('${t.id}')">Open</button>
-        <button onclick="renameTest('${t.id}','${esc(t.name)}')">Rename</button>
-        <button class="del-btn" onclick="deleteTest('${t.id}','${esc(t.name)}')">Delete</button>
+        ${t.owned ? `<button onclick="renameTest('${t.id}','${esc(t.name)}')">Rename</button>` : ''}
+        ${t.owned ? `<button onclick="openShareModal('${t.id}')">Share</button>` : '<span style="font-size:11px;color:#888;padding:3px 6px;">Shared with you</span>'}
+        ${t.owned ? `<button class="del-btn" onclick="deleteTest('${t.id}','${esc(t.name)}')">Delete</button>` : ''}
       </div>
     `;
     list.appendChild(row);
@@ -274,5 +330,19 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 </script>
+<div id="share-modal-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:center;justify-content:center;">
+  <div id="share-modal" style="background:#fff;padding:24px 28px;min-width:340px;">
+    <h3 style="font-size:14px;margin-bottom:14px;">Share Test</h3>
+    <div id="share-list" style="margin-bottom:12px;font-size:12px;"></div>
+    <div style="display:flex;gap:6px;">
+      <input id="share-input" type="text" placeholder="Username to share with" style="font-family:monospace;font-size:13px;border:1px solid #ccc;padding:5px 8px;flex:1;">
+      <button onclick="addShare()" style="background:#222;color:#fff;border:none;padding:5px 12px;cursor:pointer;font-family:monospace;">Add</button>
+    </div>
+    <div class="err" id="share-err"></div>
+    <div style="margin-top:12px;">
+      <button onclick="closeShareModal()" style="background:#888;color:#fff;border:none;padding:5px 14px;cursor:pointer;font-family:monospace;">Close</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
