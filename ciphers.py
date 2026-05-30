@@ -572,7 +572,7 @@ def nihilistFormatter(s, key, pk, bs, value, ntype, hint_type, hint, bonus):
         q=f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Nihilist Substitution}} cipher.{bonus_text}"
 
     nih_table=(
-        "\n{\\renewcommand{\\arraystretch}{1.2}\n\\begin{tabular}{|Z{18pt}|Z{18pt}|Z{18pt}|Z{18pt}|Z{18pt}|Z{18pt}|}\n"
+        "\n{\\renewcommand{\\arraystretch}{1.2}\n\\begin{tabular}{|c|Z{18pt}|Z{18pt}|Z{18pt}|Z{18pt}|Z{18pt}|}\n"
         "\\hline\n&1&2&3&4&5  \\\\\n\\hline\n"
         "1&&&&&  \\\\\n\\hline\n2&&&&&  \\\\\n\\hline\n3&&&&&  \\\\\n\\hline\n4&&&&&  \\\\\n\\hline\n5&&&&&  \\\\\n\\hline\n"
         "\\end{tabular}}\n"
