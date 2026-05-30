@@ -211,8 +211,8 @@ def dispatch(row):
     bonus     = bool(row.get('bonus', False))
     key1      = row.get('key1','')
     key2      = row.get('key2','')
-    key3      = row.get('key3','')
-    key4      = row.get('key4','')
+    key3      = row.get('key3','')   # block size for nihilist/porta/affine/checkerboard
+    key4      = row.get('key4','')   # crib plaintext for nihilist/porta/affine/checkerboard (CRIB type)
     rtype     = row.get('type','DECODE')
     extract   = (rtype == 'EXTRACT')
 
@@ -241,21 +241,34 @@ def dispatch(row):
     elif cipher == 'HILL':
         return ciphers.hillCreater(pt, key1, value, bonus)
     elif cipher == 'NIHILIST':
-        bs_val = key3 if rtype == 'CRIB' else (int(key3) if key3 else 5)
-        return ciphers.nihilistFormatter(pt, key1, key2, bs_val, value, rtype, hint_type, hint, bonus)
+        # key1=keyword, key2=polybius key, key3=block size (always), key4=crib plaintext (CRIB only)
+        bs_val = int(key3) if key3 != '' else 5
+        crib_val = key4 if rtype == 'CRIB' else ''
+        return ciphers.nihilistFormatter(pt, key1, key2, bs_val, value, rtype, hint_type, crib_val, bonus)
     elif cipher == 'PORTA':
-        bs_val = key3 if rtype == 'CRIB' else (int(key3) if key3 else 5)
-        return ciphers.porta_formatter(pt, key1, bs_val, value, rtype, hint_type, hint, bonus)
+        # key1=keyword, key3=block size (always), key4=crib plaintext (CRIB only)
+        bs_val = int(key3) if key3 != '' else 5
+        crib_val = key4 if rtype == 'CRIB' else ''
+        return ciphers.porta_formatter(pt, key1, bs_val, value, rtype, hint_type, crib_val, bonus)
     elif cipher == 'XENOCRYPT':
         return ciphers.xeno_creator(pt, value, 'Aristocrat', hint_type, hint,
                                     key3, key1, int(key2) if key2 else 0, extract)
     elif cipher == 'AFFINE':
-        return ciphers.affine_formatter(pt, key1, key2, key3, value, rtype, hint or key4, bonus)
+        # key1=a, key2=b, key3=block size (always), key4=crib plaintext (CRIB only)
+        bs_val = int(key3) if key3 != '' else 5
+        crib_val = key4 if rtype == 'CRIB' else ''
+        return ciphers.affine_formatter(pt, key1, key2, bs_val, value, rtype, crib_val, bonus)
     elif cipher == 'CHECKERBOARD':
+        # key1=hkey, key2=vkey, key3=polybius keyword, key5=block size... wait
+        # Original: key1=H-key, key2=V-key, key3=Polybius keyword, hint=crib
+        # New:      key1=H-key, key2=V-key, key3=Polybius keyword, key4=block size, key5=crib
+        # But we only have key1-key4. Re-map: key1=hkey, key2=vkey, key3=pk, key4=block size
+        # crib comes from hint field (kept as before for checkerboard)
+        bs_val = int(key4) if key4 != '' else 5
         if rtype == 'DECODE':
-            return ciphers.checkerboarddecode(pt, key1, key2, key3, 5, value, bonus)
+            return ciphers.checkerboarddecode(pt, key1, key2, key3, bs_val, value, bonus)
         elif rtype == 'CRIB':
-            return ciphers.checkerboardcrib(pt, key1, key2, key3, hint, value, bonus)
+            return ciphers.checkerboardcrib(pt, key1, key2, key3, hint, bs_val, value, bonus)
     else:
         raise ValueError(f"Unknown cipher: {cipher}")
 

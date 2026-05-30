@@ -237,26 +237,177 @@ const BACON_PRESETS = {
   'BBBAAA...': 'BBBAAABBBAAABBBAAABBBAAABB',
 };
 
-// -- Cipher field definitions --
+// ─────────────────────────────────────────────────────────────────────────────
+// CIPHER_FIELDS: defines the static key fields for each cipher/mode.
+//
+// For NIHILIST, PORTA, AFFINE, CHECKERBOARD:
+//   - Block size is always shown as a separate field (key3 for nihilist/porta/affine;
+//     key4 for checkerboard since key3 is the polybius keyword there).
+//   - The "Crib (Plaintext)" field (key4 / hint) is injected dynamically by
+//     buildCribField() only when type === 'CRIB'.
+// ─────────────────────────────────────────────────────────────────────────────
 const CIPHER_FIELDS = {
-  ARISTOCRAT:   [{id:'key1',label:'Keyword (blank=random)'},{id:'key2',label:'Shift'},{id:'key3',label:'Alph type (K1/K2/K3/blank)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},{id:'hint',label:'Hint text'}],
-  PATRISTOCRAT: [{id:'key1',label:'Keyword'},{id:'key2',label:'Shift'},{id:'key3',label:'Alph type (K1/K2/K3/blank)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},{id:'hint',label:'Hint text'}],
-  XENOCRYPT:    [{id:'key1',label:'Keyword'},{id:'key2',label:'Shift'},{id:'key3',label:'Alph type (K1/K2/K3/blank)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},{id:'hint',label:'Hint text'}],
+  ARISTOCRAT:   [
+    {id:'key1',label:'Keyword (blank=random)'},
+    {id:'key2',label:'Shift'},
+    {id:'key3',label:'Alph type (K1/K2/K3/blank)'},
+    {id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},
+    {id:'hint',label:'Hint text'}
+  ],
+  PATRISTOCRAT: [
+    {id:'key1',label:'Keyword'},
+    {id:'key2',label:'Shift'},
+    {id:'key3',label:'Alph type (K1/K2/K3/blank)'},
+    {id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},
+    {id:'hint',label:'Hint text'}
+  ],
+  XENOCRYPT:    [
+    {id:'key1',label:'Keyword'},
+    {id:'key2',label:'Shift'},
+    {id:'key3',label:'Alph type (K1/K2/K3/blank)'},
+    {id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},
+    {id:'hint',label:'Hint text'}
+  ],
   ATBASH:       [{id:'key3',label:'Block size (default 5)'}],
-  BACONIAN_LETTERS:   [{id:'key1',label:'A-letters (e.g. AEIOU)'},{id:'key2',label:'B-letters (e.g. BCDF)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Letters']},{id:'hint',label:'Hint text'}],
-  BACONIAN_SEQUENCE:  [{id:'key1',label:'A-letters (e.g. AEIOU)'},{id:'key2',label:'B-letters (e.g. BCDF)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Letters']},{id:'hint',label:'Hint text'}],
-  BACONIAN_RANDOM:    [{id:'key1',label:'A-letters (e.g. AEIOU)'},{id:'key2',label:'B-letters (e.g. BCDF)'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Letters']},{id:'hint',label:'Hint text'}],
+  BACONIAN_LETTERS:   [
+    {id:'key1',label:'A-letters (e.g. AEIOU)'},
+    {id:'key2',label:'B-letters (e.g. BCDF)'},
+    {id:'hint_type',label:'Hint type',type:'select',opts:['None','Letters']},
+    {id:'hint',label:'Hint text'}
+  ],
+  BACONIAN_SEQUENCE:  [
+    {id:'key1',label:'A-letters (e.g. AEIOU)'},
+    {id:'key2',label:'B-letters (e.g. BCDF)'},
+    {id:'hint_type',label:'Hint type',type:'select',opts:['None','Letters']},
+    {id:'hint',label:'Hint text'}
+  ],
+  BACONIAN_RANDOM:    [
+    {id:'key1',label:'A-letters (e.g. AEIOU)'},
+    {id:'key2',label:'B-letters (e.g. BCDF)'},
+    {id:'hint_type',label:'Hint type',type:'select',opts:['None','Letters']},
+    {id:'hint',label:'Hint text'}
+  ],
   BACONIAN_WORDS:     [],
   CAESAR:       [{id:'key1',label:'Shift (integer)'}],
   COLUMNAR:     [{id:'key1',label:'Columns (integer)'},{id:'key2',label:'Crib word'}],
-  CRYPTARITHM:  [{id:'key3',label:'Operation',type:'select',opts:['Addition','Subtraction','Multiplication','Other']},{id:'key2',label:'Solution numbers (space-separated, e.g. 123 456 789)'},{id:'key1',label:'Problem text (verbatim - auto-filled from template, edit as needed)',type:'textarea'}],
-  FRACMORSE:    [{id:'key1',label:'Keyword'},{id:'key2',label:'Crib'},{id:'hint_type',label:'Hint type',type:'select',opts:['None','Start Crib','Middle Crib','End Crib']},{id:'hint',label:'Manual hint (auto-generated if blank)'}],
+  CRYPTARITHM:  [
+    {id:'key3',label:'Operation',type:'select',opts:['Addition','Subtraction','Multiplication','Other']},
+    {id:'key2',label:'Solution numbers (space-separated, e.g. 123 456 789)'},
+    {id:'key1',label:'Problem text (verbatim - auto-filled from template, edit as needed)',type:'textarea'}
+  ],
+  FRACMORSE:    [
+    {id:'key1',label:'Keyword'},
+    {id:'key2',label:'Crib'},
+    {id:'hint_type',label:'Hint type',type:'select',opts:['None','Start Crib','Middle Crib','End Crib']},
+    {id:'hint',label:'Manual hint (auto-generated if blank)'}
+  ],
   HILL:         [{id:'key1',label:'Keyword (4 or 9 letters)'}],
-  NIHILIST:     [{id:'key1',label:'Keyword'},{id:'key2',label:'Polybius key'},{id:'key3',label:'Block size or crib text (if CRIB type)'}],
-  PORTA:        [{id:'key1',label:'Keyword'},{id:'key3',label:'Block size or crib text (if CRIB type)'}],
-  AFFINE:       [{id:'key1',label:'a (must be coprime with 26)'},{id:'key2',label:'b'},{id:'key3',label:'Block size'},{id:'hint',label:'Hint / crib'}],
-  CHECKERBOARD: [{id:'key1',label:'H-key (5 letters)'},{id:'key2',label:'V-key (5 letters)'},{id:'key3',label:'Polybius keyword'},{id:'hint',label:'Crib (if CRIB type)'}],
+
+  // ── Nihilist: always show keyword, polybius key, block size ──────────────
+  // Crib (key4) injected dynamically only when type=CRIB
+  NIHILIST:     [
+    {id:'key1',label:'Keyword'},
+    {id:'key2',label:'Polybius key'},
+    {id:'key3',label:'Block size (0 = no blocks, default 5)'}
+  ],
+
+  // ── Porta: always show keyword, block size ────────────────────────────────
+  // Crib (key4) injected dynamically only when type=CRIB
+  PORTA:        [
+    {id:'key1',label:'Keyword'},
+    {id:'key3',label:'Block size (0 = no blocks, default 5)'}
+  ],
+
+  // ── Affine: always show a, b, block size ─────────────────────────────────
+  // Crib (key4) injected dynamically only when type=CRIB
+  AFFINE:       [
+    {id:'key1',label:'a (must be coprime with 26)'},
+    {id:'key2',label:'b'},
+    {id:'key3',label:'Block size (0 = no blocks, default 5)'}
+  ],
+
+  // ── Checkerboard: always show H-key, V-key, polybius keyword, block size ─
+  // key4 = block size here (key3 is polybius keyword)
+  // Crib (hint field) injected dynamically only when type=CRIB
+  CHECKERBOARD: [
+    {id:'key1',label:'H-key (5 letters)'},
+    {id:'key2',label:'V-key (5 letters)'},
+    {id:'key3',label:'Polybius keyword'},
+    {id:'key4',label:'Block size (0 = no blocks, default 5)'}
+  ],
 };
+
+// Which type options are available per cipher
+const CIPHER_TYPES = {
+  ARISTOCRAT:   ['DECODE','EXTRACT'],
+  PATRISTOCRAT: ['DECODE','EXTRACT'],
+  XENOCRYPT:    ['DECODE','EXTRACT'],
+  BACONIAN:     ['LETTERS','RANDOM_LETTERS','SEQUENCE','WORDS'],
+  FRACMORSE:    ['DECODE'],
+  CRYPTARITHM:  ['DECODE'],
+  PORTA:        ['DECODE','CRIB'],
+  COLUMNAR:     ['DECODE'],
+  NIHILIST:     ['DECODE','CRIB'],
+  HILL:         ['DECODE'],
+  CHECKERBOARD: ['DECODE','CRIB'],
+  AFFINE:       ['DECODE','CRIB'],
+  ATBASH:       ['DECODE'],
+  CAESAR:       ['DECODE'],
+};
+
+const TYPE_LABELS = {
+  DECODE: 'Decode', CRIB: 'Crib', EXTRACT: 'Extract',
+  WORDS: 'Words', LETTERS: 'Letters',
+  RANDOM_LETTERS: 'Random Letters', SEQUENCE: 'Sequence',
+};
+
+// Ciphers that use the separated blocksize + dynamic crib field system
+const CRIB_BLOCKSIZE_CIPHERS = new Set(['NIHILIST','PORTA','AFFINE','CHECKERBOARD']);
+
+// For checkerboard, the crib goes into 'hint'; for nihilist/porta/affine it goes into 'key4'
+function getCribFieldId(cipher) {
+  return cipher === 'CHECKERBOARD' ? 'hint' : 'key4';
+}
+
+/**
+ * Inject or remove the "Crib (Plaintext)" field for ciphers that use the
+ * separated blocksize+crib system. Called after buildKeyFields() whenever
+ * the type changes.
+ */
+function syncCribField(cipher, typeVal) {
+  const container = document.getElementById('key-hints');
+  const cribId = 'f-' + getCribFieldId(cipher);
+  const existing = document.getElementById(cribId);
+
+  if (typeVal === 'CRIB') {
+    if (!existing) {
+      // Build and append the crib label/input
+      const label = document.createElement('label');
+      label.id = 'crib-field-label';
+      label.dataset.fieldId = getCribFieldId(cipher);
+      label.textContent = 'Crib (Plaintext)';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.id = cribId;
+      inp.placeholder = 'Enter crib plaintext';
+      inp.style.fontFamily = 'monospace';
+      inp.style.fontSize = '12px';
+      inp.style.border = '1px solid #ccc';
+      inp.style.padding = '3px 5px';
+      inp.style.width = '100%';
+      // DO NOT auto-uppercase — plaintext crib should match whatever they type
+      label.appendChild(inp);
+      container.appendChild(label);
+    }
+  } else {
+    // Remove crib field and its label if present
+    if (existing) {
+      const lbl = document.getElementById('crib-field-label') || existing.closest('label');
+      if (lbl) lbl.remove();
+      else existing.remove();
+    }
+  }
+}
 
 function handlePlaintextInput(input) {
   const cipher = document.getElementById('f-cipher').value;
@@ -349,7 +500,7 @@ function buildKeyFields() {
     }
     div.appendChild(label);
   });
-  // For BACONIAN WORDS: hide key1/key2 (replaced by alphabet table), show widget
+  // For BACONIAN WORDS: hide key1/key2, show alphabet widget
   if (cipher === 'BACONIAN') {
     const k1 = document.getElementById('f-key1');
     const k2 = document.getElementById('f-key2');
@@ -367,7 +518,6 @@ function appendBaconAlphWidget(container) {
   wrap.id = 'bacon-alph-widget';
   wrap.style.cssText = 'margin-top:10px;grid-column:1/-1;';
 
-  // Preset buttons row
   const presetRow = document.createElement('div');
   presetRow.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;align-items:center;';
   const presetLabel = document.createElement('span');
@@ -384,7 +534,6 @@ function appendBaconAlphWidget(container) {
   });
   wrap.appendChild(presetRow);
 
-  // Table container
   const tableWrap = document.createElement('div');
   tableWrap.id = 'bacon-table-wrap';
   tableWrap.style.cssText = 'overflow-x:auto;';
@@ -425,29 +574,6 @@ function flipBaconCell(i) {
   renderBaconTable();
 }
 
-const CIPHER_TYPES = {
-  ARISTOCRAT:   ['DECODE','EXTRACT'],
-  PATRISTOCRAT: ['DECODE','EXTRACT'],
-  XENOCRYPT:    ['DECODE','EXTRACT'],
-  BACONIAN:     ['LETTERS','RANDOM_LETTERS','SEQUENCE','WORDS'],
-  FRACMORSE:    ['DECODE'],
-  CRYPTARITHM:  ['DECODE'],
-  PORTA:        ['DECODE','CRIB'],
-  COLUMNAR:     ['DECODE'],
-  NIHILIST:     ['DECODE','CRIB'],
-  HILL:         ['DECODE'],
-  CHECKERBOARD: ['DECODE','CRIB'],
-  AFFINE:       ['DECODE','CRIB'],
-  ATBASH:       ['DECODE'],
-  CAESAR:       ['DECODE'],
-};
-
-const TYPE_LABELS = {
-  DECODE: 'Decode', CRIB: 'Crib', EXTRACT: 'Extract',
-  WORDS: 'Words', LETTERS: 'Letters',
-  RANDOM_LETTERS: 'Random Letters', SEQUENCE: 'Sequence',
-};
-
 function onTypeChange() {
   const cipher = document.getElementById('f-cipher').value;
   const allowed = CIPHER_TYPES[cipher] || ['DECODE'];
@@ -461,7 +587,8 @@ function onTypeChange() {
     sel.appendChild(opt);
   });
   if (allowed.includes(current)) sel.value = current;
-  // Show/hide bacon widget and key1/key2 based on type
+
+  // Rebuild key fields so bacon widget is correct
   const existing = document.getElementById('bacon-alph-widget');
   if (existing) existing.remove();
   const k1el = document.getElementById('f-key1');
@@ -475,6 +602,11 @@ function onTypeChange() {
       if (k1el) k1el.closest('label').style.display = '';
       if (k2el) k2el.closest('label').style.display = '';
     }
+  }
+
+  // Handle crib field for the four separated-blocksize ciphers
+  if (CRIB_BLOCKSIZE_CIPHERS.has(cipher)) {
+    syncCribField(cipher, sel.value);
   }
 }
 
@@ -521,7 +653,6 @@ function getField(id) {
 }
 
 function getBaconKey1() {
-  // For BACONIAN WORDS, use the alphabet widget value
   const cipher = getField('cipher');
   const type = document.getElementById('f-type') ? document.getElementById('f-type').value : '';
   if (cipher === 'BACONIAN' && type === 'WORDS') return baconAlph;
@@ -542,14 +673,21 @@ function buildPayload() {
   const rawOp = getField('key3');
   const customOp = (document.getElementById('crypto-custom-op') || {}).value || '';
   const resolvedOp = (rawOp === 'Other' && customOp) ? customOp : rawOp;
+
+  // For CHECKERBOARD: key4 is block size from the form field f-key4
+  // For NIHILIST/PORTA/AFFINE: key3 is block size, key4 is crib (if CRIB type)
+  // For CHECKERBOARD CRIB: the crib text is in f-hint
+  const key4Val = getField('key4');
+  const hintVal = getField('hint');
+
   return {
     cipher, plaintext, value: parseInt(value), type, bonus,
     key1: getBaconKey1(),
     key2: getField('key2'),
     key3: resolvedOp,
-    key4: getField('key4'),
+    key4: key4Val,
     hint_type: getField('hint_type'),
-    hint: getField('hint'),
+    hint: hintVal,
   };
 }
 
@@ -658,35 +796,45 @@ function startEdit(i) {
   editingIndex = i;
   const q = questions[i];
   const p = q.payload || {};
-  document.getElementById('f-cipher').value = p.cipher || q.cipher || 'ARISTOCRAT';
+  const cipher = p.cipher || q.cipher || 'ARISTOCRAT';
+
+  document.getElementById('f-cipher').value = cipher;
   buildKeyFields();
   onTypeChange();
-  // Set type after onTypeChange rebuilds options, then rebuild for correct bacon fields
+
+  // Set type after onTypeChange rebuilds options
   if (p.type) {
     document.getElementById('f-type').value = p.type;
-    // Re-run to get correct bacon sub-fields for this type
-    if ((p.cipher || q.cipher) === 'BACONIAN') {
+    // Re-run buildKeyFields for correct bacon sub-fields
+    if (cipher === 'BACONIAN') {
       buildKeyFields();
-      // Re-show bacon widget if WORDS
       const existing = document.getElementById('bacon-alph-widget');
       if (existing) existing.remove();
       if (p.type === 'WORDS') appendBaconAlphWidget(document.getElementById('key-hints'));
     }
+    // Re-sync crib field for the four ciphers
+    if (CRIB_BLOCKSIZE_CIPHERS.has(cipher)) {
+      syncCribField(cipher, p.type);
+    }
   }
+
   document.getElementById('f-value').value     = p.value    || '250';
   document.getElementById('f-plaintext').value = p.plaintext || q.plaintext || '';
   document.getElementById('f-bonus').checked   = p.bonus    || false;
+
+  // Restore all standard key fields
   ['key1','key2','key3','key4','hint_type','hint'].forEach(function(k) {
     const el = document.getElementById('f-' + k);
     if (el && p[k] !== undefined) el.value = p[k];
   });
+
   // Restore baconAlph if editing a BACONIAN WORDS question
-  if ((p.cipher || q.cipher) === 'BACONIAN' && p.type === 'WORDS' && p.key1) {
+  if (cipher === 'BACONIAN' && p.type === 'WORDS' && p.key1) {
     baconAlph = p.key1;
     renderBaconTable();
   }
-  document.getElementById('nhtilde-btn').style.display =
-    (p.cipher || q.cipher) === 'XENOCRYPT' ? 'inline-block' : 'none';
+
+  document.getElementById('nhtilde-btn').style.display = cipher === 'XENOCRYPT' ? 'inline-block' : 'none';
   document.getElementById('f-qtext').value = q.qtext || '';
   document.getElementById('add-btn').style.display       = 'none';
   document.getElementById('save-edit-btn').style.display = 'inline-block';
@@ -892,7 +1040,6 @@ async function loadTestData() {
   if (!currentTestId) return;
   const res = await fetch('/api/tests/' + currentTestId);
   if (res.status === 401) {
-    // Session expired - go back to login
     window.location.href = window.location.protocol + '//' + window.location.host + '/';
     return;
   }

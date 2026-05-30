@@ -352,17 +352,12 @@ def morse_stream(text):
 def frac_encode(s, kw):
     kw = kw.replace(" ","")
     alpha = list(fracalphabet(kw))
-    fmap = {}
-    keys = ["...","..–","..x",".-.",".-–",".-x",".x.",".x-",".xx","-..","-.–","-.x","--.","---","--x","-x.","-x-","-xx","x..","x.-","x.x","x-.","x--","x-x","xx.","xx-"]
-    # Use the real trigram keys
-    trigrams = ["...","..−","..x","...",]  # rebuild properly
     dots   = ['.','.','.','.','.','.','.','.','.', '-','-','-','-','-','-','-','-','-', 'x','x','x','x','x','x','x','x']
     dashes = ['.','.','.', '-','-','-', 'x','x','x', '.','.','.', '-','-','-', 'x','x','x', '.','.','.', '-','-','-', 'x','x']
     thirds = ['.', '-','x', '.', '-','x', '.', '-','x', '.', '-','x', '.', '-','x', '.', '-','x', '.', '-','x', '.', '-','x', '.', '-']
     real_keys = [dots[i]+dashes[i]+thirds[i] for i in range(26)]
     fmorse = {real_keys[i]: alpha[i] for i in range(26)}
 
-    # Build morse stream with word separators
     s_clean = re.sub(r"[^\w\s]","",s).upper()
     stream = ""
     ws = s_clean.split()
@@ -371,7 +366,6 @@ def frac_encode(s, kw):
             if ch in _MORSE: stream += _MORSE[ch] + 'x'
         if wi < len(ws)-1: stream += 'x'
 
-    # Pad
     while len(stream) % 3 != 0: stream += 'x'
 
     encoded = ""
@@ -384,19 +378,16 @@ def fractionatedFormatter(s, keyword, crib, value, hint_type, hint, bonus):
     s = re.sub(r"[^\w\s]","",s).upper()
     encoded, stream = frac_encode(s, keyword.replace(" ",""))
 
-    # Space out display
     display = "  " + "  ".join(encoded)
 
     bonus_text = " \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
 
-    # Auto hint
     if crib:
         pt = re.sub(r"[^\w]","",s).upper()
         cr = re.sub(r"[^\w]","",crib).upper()
         try: hint_type = detect_hint_type(pt, cr)
         except: pass
 
-    # Build hint string
     auto_hint = hint
     if crib and hint_type in ("Start Crib","Middle Crib","End Crib"):
         try:
@@ -512,32 +503,56 @@ def nihilist_alphabet(kw):
         if c not in seen: out.append(c)
     return ''.join(out)
 
+def _nihilist_format_output(encoded, bs):
+    """Format nihilist encoded numbers.
+    bs=0 means no grouping (just space-separated numbers on one long line, wrapped at 52 chars).
+    bs>0 means group by bs numbers per group, with line breaks every few groups.
+    """
+    if bs == 0:
+        # No block grouping: all numbers space-separated, wrapped at ~52 chars
+        y = ""
+        line = ""
+        for num_str in [str(n) for n in encoded]:
+            candidate = (line + " " + num_str).lstrip()
+            if len(candidate) > 52:
+                y += line.rstrip() + "\n\n\n"
+                line = num_str
+            else:
+                line = candidate
+        y += line.rstrip()
+        return y
+    else:
+        y = ""; z = 0
+        for i in range(len(encoded)):
+            y += str(encoded[i]) + " "
+            if i % bs == bs - 1:
+                z += 1
+                if (bs == 1 and z == 16) or (1 < bs < 7 and z == 3) or (bs >= 7 and z == 2):
+                    y += "\n\n\n"; z = 0
+                else:
+                    y += "   "
+        return y
+
 def nihilistFormatter(s, key, pk, bs, value, ntype, hint_type, hint, bonus):
     keyf=key.upper().replace("J","I").replace(" ","")
     s=re.sub(r'[^a-zA-Z]','',s).upper().replace("J","I")
     pkf=pk.upper().replace("J","I").replace(" ","")
     b=nihilist_alphabet(pkf).upper()
     pk_dict={b[i]:(i//5+1)*10+(i%5+1) for i in range(25)}
-    crib = bs if ntype=="CRIB" else None
-    bs_int = 1 if ntype=="CRIB" else (int(bs) if bs else 5)
+    bs_int = int(bs) if bs else 5
     encoded=[]
     x=0
     for let in s:
         encoded.append(pk_dict[let]+pk_dict[keyf[x]]); x=(x+1)%len(keyf)
-    y=""; z=0
-    for i in range(len(encoded)):
-        y+=str(encoded[i])+" "
-        if i%bs_int==bs_int-1:
-            if bs_int==1: z+=1;
-            if (bs_int==1 and z==16) or (bs_int<7 and bs_int>1 and z==3) or (bs_int>=7 and z==2):
-                y+="\n\n\n"; z=0
-            elif bs_int>1: y+="   "; z+=1; z=z  # already incremented above
+
+    y = _nihilist_format_output(encoded, bs_int)
+
     bonus_text=" \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
     if ntype=="DECODE":
         q=(f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Nihilist Substitution}} cipher "
            f"with a keyword of \\textbf{{{key}}} and a polybius key of \\textbf{{{pk}}}.{bonus_text}")
     elif ntype=="CRIB":
-        crib_c=re.sub(r'[^A-IK-Z]','',crib.upper().replace('J','I'))
+        crib_c=re.sub(r'[^A-IK-Z]','',hint.upper().replace('J','I'))
         try: ht=detect_hint_type(s,crib_c)
         except: ht="Start Crib"
         if ht=="Start Crib":
@@ -564,11 +579,38 @@ def nihilistFormatter(s, key, pk, bs, value, ntype, hint_type, hint, bonus):
 
 # ── Porta ─────────────────────────────────────────────────────────────────────
 
+def _porta_format_output(enc, bs):
+    """Format porta encoded string.
+    bs=0: preserve letter-level output with original spacing (no block grouping).
+    bs>0: group into blocks of bs letters, wrap at 52 chars.
+    """
+    if bs == 0:
+        # Space-separated single chars, wrapped at 52 chars
+        out = ""; line = ""; length = 0
+        for ch in enc:
+            if length + 2 > 52:
+                out += line.rstrip() + "\n\n\n"; line = ch + " "; length = 2
+            else:
+                line += ch + " "; length += 2
+        out += line.rstrip()
+        return out
+    else:
+        spaced = ""
+        for i in range(len(enc)):
+            spaced += enc[i]
+            if i % bs == bs - 1: spaced += " "
+        out = ""; line = ""; length = 0
+        for w in spaced.split():
+            if length + len(w) + 1 > 52:
+                out += line.rstrip() + "\n\n\n"; line = w + " "; length = len(w) + 1
+            else:
+                line += w + " "; length += len(w) + 1
+        out += line.rstrip()
+        return out
+
 def porta_formatter(s, keyword, bs, value, ptype, hint_type, hint, bonus):
     s=re.sub(r'[^a-zA-Z]','',s).upper()
-    crib=None
-    if ptype=="CRIB": crib=bs; bs=5
-    bs=int(bs)
+    bs=int(bs) if bs else 5
     kw=[ord(c)-65 for c in keyword.upper()]
     c=[ord(c)-65 for c in s]
     encoded=[]; x=0
@@ -577,25 +619,17 @@ def porta_formatter(s, keyword, bs, value, ptype, hint_type, hint, bonus):
         else: v2=(ele-math.floor(kw[x]/2))%13
         encoded.append(chr(v2+65)); x=(x+1)%len(kw)
     enc=''.join(encoded)
-    spaced=""
-    for i in range(len(enc)):
-        spaced+=enc[i]
-        if i%bs==bs-1: spaced+=" "
-    out=""; line=""; length=0
-    for w in spaced.split():
-        if length+len(w)+1>52: out+=line.rstrip()+"\n\n\n"; line=w+" "; length=len(w)+1
-        else: line+=w+" "; length+=len(w)+1
-    out+=line.rstrip()
+
+    out = _porta_format_output(enc, bs)
+
     bonus_text=" \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
     if ptype=="DECODE":
         q=(f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Porta}} cipher "
            f"with a keyword of \\textbf{{{keyword}}}.{bonus_text}")
     elif ptype=="CRIB":
-        crib_c=re.sub(r'[^A-Z]','',crib.upper())
+        crib_c=re.sub(r'[^A-Z]','',hint.upper())
         try: ht=detect_hint_type(s,crib_c)
         except: ht="Start Crib"
-        enc_full=''.join(chr(((c2[i] if i<len(c2) else 0)-math.floor(kw[i%len(kw)]/2))%13+65) if c2[i]>=13 else chr((c2[i]+math.floor(kw[i%len(kw)]/2))%13+13+65) for i in range(len(c2)))
-        # recalc clean
         enc_clean=''.join(encoded)
         if ht=="Start Crib":
             q=(f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Porta}} cipher. "
@@ -655,7 +689,6 @@ def xeno_creator(s, value, xtype, hint_type, hint, alph="", keyword="", shift=""
     replaced=s.upper().translate(str.maketrans(au,ru))
     formatted=aristo_format_sentence(replaced)
 
-    # frequency table
     ct=replaced
     if alph=="K2":
         tbl="Replacement"
@@ -706,29 +739,55 @@ def xeno_creator(s, value, xtype, hint_type, hint, alph="", keyword="", shift=""
 
 # ── Affine ────────────────────────────────────────────────────────────────────
 
+def _affine_format_output(encoded_str, bs):
+    """Format affine encoded string.
+    bs=0: space-separated single chars wrapped at 52 chars.
+    bs>0: group into blocks of bs, wrapped at 52 chars.
+    """
+    if bs == 0:
+        out = ""; line = ""; length = 0
+        for ch in encoded_str:
+            if length + 2 > 52:
+                out += line.rstrip() + "\n\n\n"; line = ch + " "; length = 2
+            else:
+                line += ch + " "; length += 2
+        out += line.rstrip()
+        return out
+    else:
+        spaced = ""
+        for i in range(len(encoded_str)):
+            spaced += encoded_str[i]
+            if i % bs == bs - 1: spaced += " "
+        out = ""; line = ""; length = 0
+        for w in spaced.split():
+            if length + len(w) + 1 > 52:
+                out += line.rstrip() + "\n\n\n"; line = w + " "; length = len(w) + 1
+            else:
+                line += w + " "; length += len(w) + 1
+        out += line.rstrip()
+        return out
+
 def affine_formatter(s, a, b, bs, value, atype, hint, bonus):
     a=int(a); b=int(b); bs=int(bs) if bs else 5
     if a==1 or a==13 or a%2==0: raise ValueError(f"a={a} must be coprime with 26 (odd, not 1 or 13)")
     s=re.sub(r'[^a-zA-Z]','',s).upper()
     encoded=''.join(chr(((ord(c)-65)*a+b)%26+65) for c in s)
-    spaced=""
-    for i in range(len(encoded)):
-        spaced+=encoded[i]
-        if i%bs==bs-1: spaced+=" "
-    out=""; line=""; length=0
-    for w in spaced.split():
-        if length+len(w)+1>52: out+=line.rstrip()+"\n\n\n"; line=w+" "; length=len(w)+1
-        else: line+=w+" "; length+=len(w)+1
-    out+=line.rstrip()
+
+    out = _affine_format_output(encoded, bs)
+
     bonus_text=" \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
     if atype=="DECODE":
         q=(f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Affine}} cipher "
            f"with $\\textrm{{a}}={a}$ and $\\textrm{{b}}={b}$.{bonus_text}")
     elif atype=="CRIB":
-        if len(hint)==2:
-            ct=''.join(chr(((ord(c)-65)*a+b)%26+65) for c in hint.upper())
-            nhint=f"ciphertext {ct} decodes to {hint.upper()}"
-        else: nhint=hint
+        crib_c = re.sub(r'[^A-Z]', '', hint.upper()) if hint else ''
+        if crib_c and len(crib_c) == 2:
+            ct=''.join(chr(((ord(c)-65)*a+b)%26+65) for c in crib_c)
+            nhint=f"ciphertext {ct} decodes to {crib_c}"
+        elif crib_c:
+            nhint=f"the plaintext contains \\textbf{{{crib_c}}}"
+        else:
+            nhint=hint or ''
         q=(f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Affine}} cipher. "
            f"You are told that {nhint}.{bonus_text}")
     else:
@@ -745,20 +804,39 @@ def cb_alphabet(kw):
         if c not in seen: out.append(c)
     return ''.join(out)
 
-def cb_encode(hkey,vkey,alph,s,bs):
+def _cb_encode_raw(hkey, vkey, alph, s):
+    """Encode s and return list of two-char code pairs."""
     hkey=hkey.upper(); vkey=vkey.upper(); alph=alph.upper()
     s=re.sub(r'[^a-zA-Z]','',s).upper().replace('J','I')
     pk={alph[j+i*5]:vkey[i]+hkey[j] for i in range(5) for j in range(5)}
-    encoded=[pk[c] for c in s]
-    y=""; z=0; bs=int(bs)
-    for i in range(len(encoded)):
-        y+=str(encoded[i])+" "
-        if i%bs==bs-1:
-            if bs==1: z+=1;
-            if (bs==1 and z==16) or (1<bs<7 and z==3) or (bs>=7 and z==2):
-                y+="\n\n\n"; z=0
-            elif bs>1: y+="   "; z+=1
-    return y
+    return [pk[c] for c in s]
+
+def cb_encode(hkey, vkey, alph, s, bs):
+    """Encode and format with block size bs. bs=0 means no grouping."""
+    pairs = _cb_encode_raw(hkey, vkey, alph, s)
+    bs = int(bs)
+    if bs == 0:
+        # No grouping: all pairs space-separated, wrapped at ~52 chars
+        y = ""; line = ""; length = 0
+        for pair in pairs:
+            token = pair + " "
+            if length + len(token) > 52:
+                y += line.rstrip() + "\n\n\n"; line = token; length = len(token)
+            else:
+                line += token; length += len(token)
+        y += line.rstrip()
+        return y
+    else:
+        y = ""; z = 0
+        for i in range(len(pairs)):
+            y += str(pairs[i]) + " "
+            if i % bs == bs - 1:
+                z += 1
+                if (bs == 1 and z == 16) or (1 < bs < 7 and z == 3) or (bs >= 7 and z == 2):
+                    y += "\n\n\n"; z = 0
+                else:
+                    y += "   "
+        return y
 
 def cb_table():
     return (
@@ -772,16 +850,16 @@ def cb_table():
         "\\end{tabular}}\n"
     )
 
-def checkerboarddecode(s,hkey,vkey,pk,bs,value,bonus):
-    alph=cb_alphabet(pk); v=cb_encode(hkey,vkey,alph,s,bs)
+def checkerboarddecode(s, hkey, vkey, pk, bs, value, bonus):
+    alph=cb_alphabet(pk); v=cb_encode(hkey, vkey, alph, s, bs)
     bonus_text=" \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
     return (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Checkerboard}} cipher "
             f"with a polybius keyword of \\textbf{{{pk}}}.{bonus_text}\n"
             f"\n \\Large{{\n\\begin{{verbatim}}\n{v}\n\n\\end{{verbatim}}}}\n{cb_table()}\n\\vfill\n\\uplevel{{\\hrulefill}}")
 
-def checkerboardcrib(s,hkey,vkey,pk,crib,value,bonus):
+def checkerboardcrib(s, hkey, vkey, pk, crib, bs, value, bonus):
     s=re.sub(r'[^a-zA-Z]','',s).upper().replace('J','I')
-    alph=cb_alphabet(pk); v=cb_encode(hkey,vkey,alph,s,1)
+    alph=cb_alphabet(pk); v=cb_encode(hkey, vkey, alph, s, bs)
     crib_c=re.sub(r'[^A-IK-Z]','',crib.upper().replace('J','I'))
     pk_dict={alph.upper()[j+i*5]:vkey.upper()[i]+hkey.upper()[j] for i in range(5) for j in range(5)}
     try:
