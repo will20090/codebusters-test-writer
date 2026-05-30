@@ -566,7 +566,7 @@ Replacement&&&&&&&&&&&&&&&&&&&&&&&&&&\\
 \usepackage{{enumitem}}
 \usepackage{{mdframed}}
 
-\newcolumntype{{C}}[1]{{>{{centering\arraybackslash}}p{{#1}}}}
+\newcolumntype{{Z}}[1]{{>{{centering\arraybackslash}}p{{#1}}}}
 \renewcommand{{\questionshook}}{{\setlength{{\leftmargin}}{{20pt}}}}
 \renewcommand{{\choiceshook}}{{\setlength{{\leftmargin}}{{30pt}}}}
 \hypersetup{{colorlinks=true,linkcolor=teal,filecolor=teal,urlcolor=teal}}
