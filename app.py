@@ -522,7 +522,22 @@ Team Number: \underline{{\hspace{{3cm}}}}
     import re as _re2
 
     def get_latex(q):
-        return q['latex'] if isinstance(q, dict) else q
+    if not isinstance(q, dict):
+        return q
+    latex = q['latex']
+    qtext = q.get('qtext', '').strip()
+    if not qtext:
+        return latex
+    import re as _re
+    # Replace the \question line's text with the custom qtext
+    latex = _re.sub(
+        r'(\\normalsize \\question\[\d+\] )(.*?)(\n)',
+        lambda m: m.group(1) + qtext + m.group(3),
+        latex,
+        count=1,
+        flags=_re.DOTALL
+    )
+    return latex
 
     def make_col_rows(qs_indexed):
         rows = ''
