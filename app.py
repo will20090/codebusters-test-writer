@@ -291,7 +291,7 @@ def get_shares(tid):
     if err: return err
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute('SELECT id FROM tests WHERE id = %s AND user_id = %s', (tid, current_user()))
+    cur.execute('SELECT id FROM tests WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))', (tid, current_user(), current_user()))
     if not cur.fetchone(): cur.close(); conn.close(); return jsonify({'error': 'Not found'}), 404
     cur.execute('SELECT u.username FROM test_shares ts JOIN users u ON u.id = ts.user_id WHERE ts.test_id = %s', (tid,))
     shares = [r['username'] for r in cur.fetchall()]
