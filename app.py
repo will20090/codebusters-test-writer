@@ -158,7 +158,10 @@ def get_test(tid):
     if err: return err
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute('SELECT * FROM tests WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))', (tid, current_user(), current_user()))
+    cur.execute('''SELECT t.*, u.username as owner_username 
+                   FROM tests t JOIN users u ON u.id = t.user_id
+                   WHERE t.id = %s AND (t.user_id = %s OR t.id IN (SELECT test_id FROM test_shares WHERE user_id = %s))''', 
+                (tid, current_user(), current_user()))
     t = cur.fetchone()
     cur.close(); conn.close()
     if not t: return jsonify({'error': 'Not found'}), 404

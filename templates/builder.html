@@ -1261,16 +1261,26 @@ async function openShareModal() {
 
 async function loadShareList(isOwner) {
   if (!currentTestId) return;
-  const res = await fetch('/api/tests/' + currentTestId + '/shares');
-  const users = await res.json();
+  const [sharesRes, testRes] = await Promise.all([
+    fetch('/api/tests/' + currentTestId + '/shares'),
+    fetch('/api/tests/' + currentTestId)
+  ]);
+  const users = await sharesRes.json();
+  const test = await testRes.json();
   const div = document.getElementById('share-list');
-  if (!users.length) { div.innerHTML = '<span style="color:#888">Not shared with anyone yet.</span>'; return; }
-  div.innerHTML = users.map(u =>
-    `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;">
-      <span>${u}</span>
-      ${isOwner ? `<button onclick="removeShare('${u}')" style="font-size:11px;border:1px solid #ccc;padding:2px 8px;cursor:pointer;background:none;font-family:monospace;">Remove</button>` : ''}
-    </div>`
-  ).join('');
+  let html = `<div style="padding:3px 0;color:#555;"><span style="font-size:10px;text-transform:uppercase;color:#888;">Owner</span><br><b>${test.owner_username || test.user_id}</b></div>`;
+  if (users.length) {
+    html += '<div style="margin-top:6px;font-size:10px;text-transform:uppercase;color:#888;">Shared with</div>';
+    html += users.map(u =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;">
+        <span>${u}</span>
+        ${isOwner ? `<button onclick="removeShare('${u}')" style="font-size:11px;border:1px solid #ccc;padding:2px 8px;cursor:pointer;background:none;font-family:monospace;">Remove</button>` : ''}
+      </div>`
+    ).join('');
+  } else {
+    html += '<div style="color:#888;margin-top:4px;">Not shared with anyone else yet.</div>';
+  }
+  div.innerHTML = html;
 }
 
 function closeShareModal() {
