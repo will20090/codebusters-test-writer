@@ -75,6 +75,17 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 .left-tab.active { background: #fff; color: #222; font-weight: bold; }
 .left-tab:hover { background: #666; color: #fff; }
 .left-tab.active:hover { background: #fff; color: #222; }
+
+/* -- History -- */
+.hist-row { border: 1px solid #ddd; padding: 8px 12px; background: #fff; font-size: 12px; cursor: default; }
+.hist-row.has-diff { cursor: pointer; }
+.hist-row.has-diff:hover { border-color: #999; background: #fafafa; }
+.hist-meta { font-size: 10px; color: #888; margin-top: 2px; }
+.hist-action { font-weight: bold; }
+.diff-panel { display: none; margin-top: 8px; border-top: 1px solid #eee; padding-top: 8px; display: flex; gap: 12px; }
+.diff-side { flex: 1; }
+.diff-side h4 { font-size: 10px; color: #888; margin-bottom: 4px; text-transform: uppercase; }
+.diff-side pre { font-size: 10px; background: #f5f5f5; padding: 6px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
 </style>
 </head>
 <body>
@@ -88,9 +99,11 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
     <div id="left-tabs" style="display:flex;gap:2px;margin-right:8px;">
       <div class="left-tab active" id="ltab-questions" onclick="switchLeftTab('questions')">Questions</div>
       <div class="left-tab" id="ltab-setup" onclick="switchLeftTab('setup')">Tournament Setup + Timed</div>
+      <div class="left-tab" id="ltab-history" onclick="switchLeftTab('history')">Edit History</div>
     </div>
     <button onclick="downloadPDF(false)">Download Test PDF</button>
     <button onclick="downloadPDF(true)">Download Key PDF</button>
+    <button onclick ="openShareModal()">Share</button>
   </div>
 
   <div id="main">
@@ -122,6 +135,10 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
             <span id="s-cover-status" style="font-size:11px;color:#888"></span>
           </label>
         </div>
+      </div>
+
+      <div id="panel-history" style="display:none;flex:1;overflow-y:auto;padding:14px;background:#fff;">
+        <div id="history-list" style="display:flex;flex-direction:column;gap:6px;"></div>
       </div>
 
       <!-- Questions panel -->
@@ -911,13 +928,21 @@ function deleteQuestion(i) {
   setStatus('Question deleted. Click Refresh Preview to update.');
 }
 
-function randomizeOrder() {
+async function randomizeOrder() {
+  const before = questions.map((q, i) => ({pos: i+1, cipher: q.cipher, plaintext: q.plaintext}));
   for (let i = questions.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [questions[i], questions[j]] = [questions[j], questions[i]];
   }
+  const after = questions.map((q, i) => ({pos: i+1, cipher: q.cipher, plaintext: q.plaintext}));
   renderList(); previewDirty = true; scheduleSave();
   setStatus('Randomized order. Click Refresh Preview to update.');
+  if (currentTestId) {
+    await fetch('/api/tests/' + currentTestId + '/history', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'Randomized question order', detail: '', before: before, after: after})
+    });
+  }
 }
 
 function escHtml(s) {
@@ -1028,17 +1053,130 @@ async function downloadPDF(isKey) {
 }
 
 function switchLeftTab(tab) {
-  const qPanel = document.getElementById('panel-questions');
-  const sPanel = document.getElementById('panel-setup');
-  if (tab === 'questions') {
-    qPanel.style.display = 'flex';
-    sPanel.style.display = 'none';
-  } else {
-    qPanel.style.display = 'none';
-    sPanel.style.display = 'block';
-  }
+  document.getElementById('panel-questions').style.display = tab === 'questions' ? 'flex' : 'none';
+  document.getElementById('panel-setup').style.display = tab === 'setup' ? 'block' : 'none';
+  document.getElementById('panel-history').style.display = tab === 'history' ? 'flex' : 'none';
   document.getElementById('ltab-questions').classList.toggle('active', tab === 'questions');
   document.getElementById('ltab-setup').classList.toggle('active', tab === 'setup');
+  document.getElementById('ltab-history').classList.toggle('active', tab === 'history');
+  if (tab === 'history') loadHistory();
+}
+
+async function loadHistory() {
+  const list = document.getElementById('history-list');
+  list.innerHTML = '<span style="color:#888;font-size:12px;">Loading...</span>';
+  if (!currentTestId) { list.innerHTML = '<span style="color:#888;font-size:12px;">No history yet.</span>'; return; }
+  const res = await fetch('/api/tests/' + currentTestId + '/history');
+  const rows = await res.json();
+  if (!rows.length) { list.innerHTML = '<span style="color:#888;font-size:12px;">No history yet.</span>'; return; }
+  list.innerHTML = '';
+  rows.forEach(function(r) {
+    const div = document.createElement('div');
+    const hasDiff = r.before_data || r.after_data;
+    div.className = 'hist-row' + (hasDiff ? ' has-diff' : '');
+    const dt = new Date(r.created).toLocaleString();
+    div.innerHTML = `
+      <div><span class="hist-action">${escHtml(r.action)}</span>${r.detail ? ' — ' + escHtml(r.detail) : ''}</div>
+      <div class="hist-meta">${escHtml(r.username || '')} · ${dt}</div>
+      ${hasDiff ? `<div class="diff-panel" id="diff-${r.id}" style="display:none;">
+        <div class="diff-side"><h4>Before</h4><pre>${escHtml(formatDiff(r.before_data))}</pre></div>
+        <div class="diff-side"><h4>After</h4><pre>${escHtml(formatDiff(r.after_data))}</pre></div>
+      </div>` : ''}
+    `;
+    if (hasDiff) {
+      div.addEventListener('click', function() {
+        const panel = document.getElementById('diff-' + r.id);
+        if (panel) panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+      });
+    }
+    list.appendChild(div);
+  });
+}
+
+function formatDiff(data) {
+  if (!data) return '(none)';
+  const d = typeof data === 'string' ? JSON.parse(data) : data;
+  // Reorder list (from randomize or reorder)
+  if (Array.isArray(d)) {
+    return d.map(r => `Q${r.pos}: ${r.cipher} — ${r.plaintext}`).join('\n');
+  }
+  // Settings diff
+  if (!d.cipher && !d.payload) {
+    const lines = [];
+    for (const [k, v] of Object.entries(d)) {
+      if (k === 'cover_image') continue;
+      lines.push(`${k}: ${v}`);
+    }
+    return lines.join('\n');
+  }
+  // Question diff — show all payload fields per cipher
+  const p = d.payload || {};
+  const cipher = (p.cipher || d.cipher || '').toUpperCase();
+  const lines = [];
+  lines.push(`Cipher: ${cipher}`);
+  lines.push(`Plaintext: ${p.plaintext || d.plaintext || ''}`);
+  lines.push(`Type: ${p.type || ''}`);
+  lines.push(`Points: ${p.value || ''}`);
+  lines.push(`Bonus: ${p.bonus || false}`);
+
+  if (['ARISTOCRAT','PATRISTOCRAT','XENOCRYPT'].includes(cipher)) {
+    if (p.key1) lines.push(`Keyword: ${p.key1}`);
+    if (p.key2) lines.push(`Shift: ${p.key2}`);
+    if (p.key3) lines.push(`Alphabet Type (K1/K2/K3): ${p.key3}`);
+    if (p.hint_type && p.hint_type !== 'None') lines.push(`Hint Type: ${p.hint_type}`);
+    if (p.hint) lines.push(`Hint: ${p.hint}`);
+  } else if (cipher === 'BACONIAN') {
+    const type = (p.type || '').toUpperCase();
+    if (type === 'WORDS') {
+      lines.push(`Alphabet: ${p.key1 || ''}`);
+    } else {
+      if (p.key1) lines.push(`A-letters: ${p.key1}`);
+      if (p.key2) lines.push(`B-letters: ${p.key2}`);
+      if (p.hint_type && p.hint_type !== 'None') lines.push(`Hint Type: ${p.hint_type}`);
+      if (p.hint) lines.push(`Hint: ${p.hint}`);
+    }
+  } else if (cipher === 'CAESAR') {
+    lines.push(`Shift: ${p.key1 || ''}`);
+  } else if (cipher === 'ATBASH') {
+    lines.push(`Block Size: ${p.key3 || 5}`);
+  } else if (cipher === 'COLUMNAR') {
+    lines.push(`Columns: ${p.key1 || ''}`);
+    lines.push(`Crib Word: ${p.key2 || ''}`);
+  } else if (cipher === 'CRYPTARITHM') {
+    lines.push(`Operation: ${p.key3 || ''}`);
+    lines.push(`Solution Numbers: ${p.key2 || ''}`);
+    lines.push(`Problem Text:\n${p.key1 || ''}`);
+  } else if (cipher === 'FRACMORSE') {
+    lines.push(`Keyword: ${p.key1 || ''}`);
+    lines.push(`Crib: ${p.key2 || ''}`);
+    if (p.hint_type && p.hint_type !== 'None') lines.push(`Hint Type: ${p.hint_type}`);
+    if (p.hint) lines.push(`Manual Hint: ${p.hint}`);
+  } else if (cipher === 'HILL') {
+    lines.push(`Keyword: ${p.key1 || ''}`);
+  } else if (cipher === 'NIHILIST') {
+    lines.push(`Keyword: ${p.key1 || ''}`);
+    lines.push(`Polybius Key: ${p.key2 || ''}`);
+    lines.push(`Block Size: ${p.key3 !== undefined ? p.key3 : 5}`);
+    if ((p.type||'').toUpperCase() === 'CRIB') lines.push(`Crib: ${p.key4 || ''}`);
+  } else if (cipher === 'PORTA') {
+    lines.push(`Keyword: ${p.key1 || ''}`);
+    lines.push(`Block Size: ${p.key3 !== undefined ? p.key3 : 5}`);
+    if ((p.type||'').toUpperCase() === 'CRIB') lines.push(`Crib: ${p.key4 || ''}`);
+  } else if (cipher === 'AFFINE') {
+    lines.push(`a: ${p.key1 || ''}`);
+    lines.push(`b: ${p.key2 || ''}`);
+    lines.push(`Block Size: ${p.key3 !== undefined ? p.key3 : 5}`);
+    if ((p.type||'').toUpperCase() === 'CRIB') lines.push(`Crib: ${p.key4 || ''}`);
+  } else if (cipher === 'CHECKERBOARD') {
+    lines.push(`H-Key: ${p.key1 || ''}`);
+    lines.push(`V-Key: ${p.key2 || ''}`);
+    lines.push(`Polybius Keyword: ${p.key3 || ''}`);
+    lines.push(`Block Size: ${p.key4 !== undefined ? p.key4 : 5}`);
+    if ((p.type||'').toUpperCase() === 'CRIB') lines.push(`Crib: ${p.hint || ''}`);
+  }
+
+  if (d.qtext) lines.push(`\nQuestion Text: ${d.qtext}`);
+  return lines.join('\n');
 }
 
 function goHome() { window.location.href = window.location.protocol + '//' + window.location.host + '/'; }
@@ -1107,12 +1245,98 @@ function scheduleSave() {
   saveTimer = setTimeout(autosave, 1200);
 }
 
+async function openShareModal() {
+  document.getElementById('share-err').textContent = '';
+  document.getElementById('share-input').value = '';
+  document.getElementById('share-modal-bg').style.display = 'flex';
+  // check if owner
+  const res = await fetch('/api/me');
+  const me = await res.json();
+  const testRes = await fetch('/api/tests/' + currentTestId);
+  const test = await testRes.json();
+  const isOwner = test.user_id === me.uid;
+  document.getElementById('share-add-row').style.display = isOwner ? 'flex' : 'none';
+  loadShareList(isOwner);
+}
+
+async function loadShareList(isOwner) {
+  if (!currentTestId) return;
+  const res = await fetch('/api/tests/' + currentTestId + '/shares');
+  const users = await res.json();
+  const div = document.getElementById('share-list');
+  if (!users.length) { div.innerHTML = '<span style="color:#888">Not shared with anyone yet.</span>'; return; }
+  div.innerHTML = users.map(u =>
+    `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;">
+      <span>${u}</span>
+      ${isOwner ? `<button onclick="removeShare('${u}')" style="font-size:11px;border:1px solid #ccc;padding:2px 8px;cursor:pointer;background:none;font-family:monospace;">Remove</button>` : ''}
+    </div>`
+  ).join('');
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal-bg').style.display = 'none';
+}
+
+async function loadShareList() {
+  if (!currentTestId) return;
+  const res = await fetch('/api/tests/' + currentTestId + '/shares');
+  const users = await res.json();
+  const div = document.getElementById('share-list');
+  if (!users.length) { div.innerHTML = '<span style="color:#888">Not shared with anyone yet.</span>'; return; }
+  div.innerHTML = users.map(u =>
+    `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;">
+      <span>${u}</span>
+      <button onclick="removeShare('${u}')" style="font-size:11px;border:1px solid #ccc;padding:2px 8px;cursor:pointer;background:none;font-family:monospace;">Remove</button>
+    </div>`
+  ).join('');
+}
+
+async function addShare() {
+  const username = document.getElementById('share-input').value.trim();
+  document.getElementById('share-err').textContent = '';
+  if (!username) return;
+  const res = await fetch('/api/tests/' + currentTestId + '/share', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username})
+  });
+  const data = await res.json();
+  if (data.error) { document.getElementById('share-err').textContent = data.error; return; }
+  document.getElementById('share-input').value = '';
+  loadShareList();
+}
+
+async function removeShare(username) {
+  await fetch('/api/tests/' + currentTestId + '/share/' + username, {method: 'DELETE'});
+  loadShareList();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('share-modal-bg').addEventListener('click', e => {
+    if (e.target === document.getElementById('share-modal-bg')) closeShareModal();
+  });
+});
+
 // -- Init --
 buildKeyFields();
 onTypeChange();
 loadTestData();
 updateBonusNums();
 
+
 </script>
+<div id="share-modal-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:center;justify-content:center;">
+  <div id="share-modal" style="background:#fff;padding:24px 28px;min-width:340px;">
+    <h3 style="font-size:14px;margin-bottom:14px;">Share Test</h3>
+    <div id="share-list" style="margin-bottom:12px;font-size:12px;"></div>
+    <div id="share-add-row" style="display:flex;gap:6px;">
+      <input id="share-input" type="text" placeholder="Username to share with" style="font-family:monospace;font-size:13px;border:1px solid #ccc;padding:5px 8px;flex:1;">
+      <button onclick="addShare()" style="background:#222;color:#fff;border:none;padding:5px 12px;cursor:pointer;font-family:monospace;">Add</button>
+    </div>
+    <div style="color:red;font-size:11px;margin-top:4px;" id="share-err"></div>
+    <div style="margin-top:12px;">
+      <button onclick="closeShareModal()" style="background:#888;color:#fff;border:none;padding:5px 14px;cursor:pointer;font-family:monospace;">Close</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

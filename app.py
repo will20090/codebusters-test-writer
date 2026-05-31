@@ -28,6 +28,20 @@ def get_db():
 
 def nid(): return uuid.uuid4().hex[:12]
 
+def log_history(tid, action, detail='', before=None, after=None):
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            'INSERT INTO test_history (test_id, user_id, username, action, detail, before_data, after_data) VALUES (%s, %s, %s, %s, %s, %s, %s)',
+            (tid, session.get('uid'), session.get('username'), action, detail,
+             json.dumps(before) if before else None,
+             json.dumps(after) if after else None)
+        )
+        cur.close(); conn.close()
+    except Exception as e:
+        print(f'[history] {e}')
+
 def current_user():
     return session.get('uid')
 
@@ -135,6 +149,7 @@ def create_test():
         (tid, current_user(), name, now, now, json.dumps({}), json.dumps([]))
     )
     cur.close(); conn.close()
+    log_history(tid, 'Created test', name)
     return jsonify({'id': tid, 'name': name, 'created': now, 'modified': now, 'settings': {}, 'questions': []})
 
 @app.route('/api/tests/<tid>', methods=['GET'])
@@ -156,12 +171,52 @@ def update_test(tid):
     data = request.get_json()
     now = datetime.datetime.now().isoformat()
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('SELECT settings, questions FROM tests WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))', (tid, current_user(), current_user()))
+    old = cur.fetchone()
+    new_settings = data.get('settings', {})
+    new_questions = data.get('questions', [])
+    if old:
+        old_settings = old['settings'] or {}
+        old_questions = old['questions'] or []
+        if old_settings != new_settings:
+            log_history(tid, 'Changed tournament settings', '', old_settings, new_settings)
+        if len(old_questions) < len(new_questions):
+            for i in range(len(old_questions), len(new_questions)):
+                q = new_questions[i]
+                log_history(tid, 'Added question', f"Q{i+1}: {q.get('cipher','')} — {q.get('plaintext','')}", None, q)
+        elif len(old_questions) > len(new_questions):
+            for i in range(len(new_questions), len(old_questions)):
+                q = old_questions[i]
+                log_history(tid, 'Deleted question', f"Q{i+1}: {q.get('cipher','')} — {q.get('plaintext','')}", q, None)
+        elif len(old_questions) == len(new_questions) and len(old_questions) > 0:
+            old_plaintexts = [q.get('plaintext','') for q in old_questions]
+            new_plaintexts = [q.get('plaintext','') for q in new_questions]
+            old_set = sorted(old_plaintexts)
+            new_set = sorted(new_plaintexts)
+            if old_set == new_set and old_plaintexts != new_plaintexts:
+                # Pure reorder — find what moved
+                moves = []
+                for i, (op, np) in enumerate(zip(old_plaintexts, new_plaintexts)):
+                    if op != np:
+                        new_pos = new_plaintexts.index(op)
+                        moves.append(f"Q{i+1} → Q{new_pos+1}")
+                detail = ', '.join(moves)
+                # Build before/after as ordered list of cipher+plaintext
+                before_order = [{'pos': i+1, 'cipher': q.get('cipher',''), 'plaintext': q.get('plaintext','')} for i, q in enumerate(old_questions)]
+                after_order  = [{'pos': i+1, 'cipher': q.get('cipher',''), 'plaintext': q.get('plaintext','')} for i, q in enumerate(new_questions)]
+                log_history(tid, 'Reordered questions', detail, before_order, after_order)
+            else:
+                # Same count, not a pure reorder — check for edits
+                for i, (oq, nq) in enumerate(zip(old_questions, new_questions)):
+                    if oq.get('payload') != nq.get('payload') or oq.get('qtext') != nq.get('qtext'):
+                        log_history(tid, 'Edited question', f"Q{i+1}: {nq.get('cipher','')} — {nq.get('plaintext','')}", oq, nq)
+    cur2 = conn.cursor()
+    cur2.execute(
         'UPDATE tests SET settings = %s, questions = %s, modified = %s WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))',
-        (json.dumps(data.get('settings', {})), json.dumps(data.get('questions', [])), now, tid, current_user(), current_user())
+        (json.dumps(new_settings), json.dumps(new_questions), now, tid, current_user(), current_user())
     )
-    cur.close(); conn.close()
+    cur2.close(); cur.close(); conn.close()
     return jsonify({'ok': True})
 
 @app.route('/api/tests/<tid>', methods=['DELETE'])
@@ -184,6 +239,28 @@ def rename_test(tid):
     cur = conn.cursor()
     cur.execute('UPDATE tests SET name = %s WHERE id = %s AND user_id = %s', (name, tid, current_user()))
     cur.close(); conn.close()
+    return jsonify({'ok': True})
+
+@app.route('/api/tests/<tid>/history', methods=['GET'])
+def get_history(tid):
+    err = require_login()
+    if err: return err
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        'SELECT * FROM test_history WHERE test_id = %s ORDER BY created DESC LIMIT 200',
+        (tid,)
+    )
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/tests/<tid>/history', methods=['POST'])
+def add_history(tid):
+    err = require_login()
+    if err: return err
+    d = request.get_json()
+    log_history(tid, d.get('action',''), d.get('detail',''), d.get('before'), d.get('after'))
     return jsonify({'ok': True})
 
 @app.route('/api/tests/<tid>/share', methods=['POST'])
