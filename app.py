@@ -772,7 +772,14 @@ def download():
     try:
         d = request.get_json()
         latex = build_latex(d.get('settings',{}), d.get('questions',[]), d.get('is_key',False))
-        name = 'key.pdf' if d.get('is_key') else 'test.pdf'
+        settings = d.get('settings', {})
+        tournament = re.sub(r'[^a-zA-Z0-9 ]', '', settings.get('tournament', 'Tournament')).strip()
+        division = settings.get('division', '')
+        compdate = settings.get('compdate', '')
+        year = compdate.split('/')[-1] if compdate else ''
+        suffix = 'KEY' if d.get('is_key') else 'TEST'
+        parts = [p for p in [year, tournament, 'CODEBUSTERS', division, suffix] if p]
+        name = ' '.join(parts).replace(' ', '_') + '.pdf'
         return send_file(compile_pdf(latex), mimetype='application/pdf', as_attachment=True, download_name=name)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
