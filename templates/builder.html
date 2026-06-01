@@ -162,6 +162,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
                 <option value="NIHILIST">Nihilist</option>
                 <option value="PORTA">Porta</option>
                 <option value="CHECKERBOARD">Checkerboard</option>
+                <option value="HOMOPHONIC">Homophonic</option>
               </select>
             </label>
             <label>Type
@@ -353,6 +354,11 @@ const CIPHER_FIELDS = {
     {id:'key3',label:'Polybius keyword'},
     {id:'key4',label:'Block size (0 = no blocks, blank = default 5)'}
   ],
+  HOMOPHONIC: [
+  {id:'key1', label:'Keyword (max 4 letters)'},
+  {id:'hint_type', label:'Hint type', type:'select', opts:['None','Word','Letters','Subject']},
+  {id:'hint', label:'Hint text'}
+  ],
 };
 
 // Which type options are available per cipher
@@ -371,6 +377,7 @@ const CIPHER_TYPES = {
   //AFFINE:       ['DECODE','CRIB'],
   ATBASH:       ['DECODE'],
   CAESAR:       ['DECODE'],
+  HOMOPHONIC: ['DECODE', 'CRIB'],
 };
 
 const TYPE_LABELS = {
@@ -380,7 +387,7 @@ const TYPE_LABELS = {
 };
 
 // Ciphers that use the separated blocksize + dynamic crib field system
-const CRIB_BLOCKSIZE_CIPHERS = new Set(['NIHILIST','PORTA','AFFINE','CHECKERBOARD']);
+const CRIB_BLOCKSIZE_CIPHERS = new Set(['NIHILIST','PORTA','AFFINE','CHECKERBOARD','HOMOPHONIC']);
 
 // For checkerboard, the crib goes into 'hint'; for nihilist/porta/affine it goes into 'key4'
 function getCribFieldId(cipher) {

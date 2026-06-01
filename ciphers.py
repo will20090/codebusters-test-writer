@@ -885,3 +885,108 @@ def checkerboardcrib(s, hkey, vkey, pk, crib, bs, value, bonus):
     return (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Checkerboard}} cipher. "
             f"You are told that {c}.{bonus_text}\n"
             f"\n \\Large{{\n\\begin{{verbatim}}\n{v}\n\n\\end{{verbatim}}}}\n{cb_table()}\n\\vfill\n\\uplevel{{\\hrulefill}}")
+
+# ── Homophonic ────────────────────────────────────────────────────────────────
+
+def homophonic_formatter(s, keyword, value, hint_type, hint, crib, bonus):
+
+    alph = 'ABCDEFGHIKLMNOPQRSTUVWXYZ'  # 25 letters, no J
+    keyword = re.sub(r'[^A-Za-z]', '', keyword).upper().replace('J', 'I')[:4]
+    if len(keyword) != 4:
+        raise ValueError("Homophonic keyword must be exactly 4 letters")
+
+    # Build substitution table: each letter gets 4 two-digit numbers
+    table = {c: [] for c in alph}
+    for row in range(4):
+        start_letter = keyword[row]
+        start_num = row * 25 + 1  # rows start at 01, 26, 51, 76
+        start_idx = alph.index(start_letter)
+        for i in range(25):
+            idx = (start_idx + i) % 25
+            num = start_num + i
+            table[alph[idx]].append(f'{num:02d}')
+
+    # Encode
+    s_clean = re.sub(r'[^a-zA-Z]', '', s).upper().replace('J', 'I')
+    encoded = [random.choice(table[c]) for c in s_clean]
+
+    # Format output — always preserve original word spacing
+    words = re.sub(r'[^a-zA-Z ]', '', s).upper().replace('J', 'I').split()
+    lines = []; line = ""; length = 0; idx = 0
+    for word in words:
+        token = ' '.join(encoded[idx:idx+len(word)]) + '   '
+        idx += len(word)
+        if length + len(token) > 52:
+            lines.append(line.rstrip())
+            line = token; length = len(token)
+        else:
+            line += token; length += len(token)
+    if line.rstrip(): lines.append(line.rstrip())
+    y = '\n\n\n'.join(lines)
+    # Build question text
+    bonus_text = " \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
+
+    if crib:
+        crib_c = re.sub(r'[^A-Z]', '', crib.upper()).replace('J', 'I')
+        if crib_c not in s_clean:
+            raise ValueError(f"Crib '{crib_c}' not found in plaintext '{s_clean}'")
+        try: ht = detect_hint_type(s_clean, crib_c)
+        except: ht = "Start Crib"
+        idx2 = s_clean.find(crib_c)
+        ct_chunk = ' '.join(encoded[idx2:idx2+len(crib_c)])
+        if ht == "Start Crib":
+            q = (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Homophonic}} cipher. "
+                 f"You are told that the keyword used is 4 letters long and the plaintext begins with \\textbf{{{crib_c}}}.{bonus_text}")
+        elif ht == "End Crib":
+            q = (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Homophonic}} cipher. "
+                 f"You are told that the keyword used is 4 letters long and the plaintext ends with \\textbf{{{crib_c}}}.{bonus_text}")
+        else:
+            q = (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Homophonic}} cipher. "
+                 f"You are told that the keyword used is 4 letters long and the {ordinal(idx2+1)} through {ordinal(idx2+len(crib_c))} cipher units ({ct_chunk}) decode to be \\textbf{{{crib_c}}}.{bonus_text}")
+    elif hint_type and hint_type != 'None':
+        if hint_type == 'Word':
+            q = (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Homophonic}} cipher "
+                 f"with a keyword of \\textbf{{{keyword}}}. You are told that {hint}.{bonus_text}")
+        elif hint_type == 'Letters':
+            q = (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Homophonic}} cipher "
+                 f"with a keyword of \\textbf{{{keyword}}}. You are told that {hint}.{bonus_text}")
+        elif hint_type == 'Subject':
+            q = (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Homophonic}} cipher "
+                 f"with a keyword of \\textbf{{{keyword}}} about {hint}.{bonus_text}")
+        else:
+            q = (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Homophonic}} cipher "
+                 f"with a keyword of \\textbf{{{keyword}}}.{bonus_text}")
+    else:
+        q = (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Homophonic}} cipher "
+             f"with a keyword of \\textbf{{{keyword}}}.{bonus_text}")
+    # Build the homophonic table for solvers
+    # Shows all 4 rows with numbers, blank row for solver to fill plaintext
+    ##rows = ['01-25', '26-50', '51-75', '76-00']
+    ##table_rows = ''
+    ##for row in range(4):
+        ##start_num = row * 25 + 1
+       ## start_letter = keyword[row]
+      ##  start_idx = alph.index(start_letter)
+      ##  cells = ''
+     ##   for i in range(25):
+      ##      num = start_num + i
+      ##      cells += f'& {num:02d}'
+      ##  table_rows += f'\\hline\n{rows[row]}{cells}\\\\\n'
+
+    # Header row with alphabet
+    header = '&'.join(list(alph))
+
+    #homo_table = (
+    #    "\n{\\small\n\\begin{center}\n"
+     #   "\\begin{tabular}{|c|" + "c|"*25 + "}\n"
+      #  "\\hline\n"
+       # f"&{header}\\\\\n"
+        #f"{table_rows}"
+    #    "\\hline\n"
+     #   "Plain&" + "&"*24 + "\\\\\n"
+     #   "\\hline\n"
+     #   "\\end{tabular}\n"
+     #   "\\end{center}}\n"
+    #)
+
+    return q + f"\n\n \\Large{{\n\\begin{{verbatim}}\n{y}\n\n\\end{{verbatim}}}}\\vfill\n\\uplevel{{\\hrulefill}}"
