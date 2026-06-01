@@ -3,6 +3,7 @@ import subprocess, tempfile, os, json, traceback, shutil, sys, datetime, uuid
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from cryptography.fernet import Fernet
 
 sys.path.insert(0, os.path.dirname(__file__))
 import ciphers
@@ -27,6 +28,22 @@ def get_db():
     return conn
 
 def nid(): return uuid.uuid4().hex[:12]
+
+def get_fernet():
+    key = os.environ.get('ENCRYPTION_KEY')
+    if not key:
+        raise RuntimeError('ENCRYPTION_KEY not set')
+    return Fernet(key.encode())
+
+def encrypt_questions(questions_list):
+    f = get_fernet()
+    return f.encrypt(json.dumps(questions_list).encode()).decode()
+
+def decrypt_questions(encrypted_str):
+    if not encrypted_str:
+        return []
+    f = get_fernet()
+    return json.loads(f.decrypt(encrypted_str.encode()).decode())
 
 def log_history(tid, action, detail='', before=None, after=None):
     try:
@@ -145,8 +162,8 @@ def create_test():
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
-        'INSERT INTO tests (id, user_id, name, created, modified, settings, questions) VALUES (%s, %s, %s, %s, %s, %s, %s)',
-        (tid, current_user(), name, now, now, json.dumps({}), json.dumps([]))
+        'INSERT INTO tests (id, user_id, name, created, modified, settings, questions, questions_encrypted) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
+        (tid, current_user(), name, now, now, json.dumps({}), json.dumps([]), encrypt_questions([]))
     )
     cur.close(); conn.close()
     log_history(tid, 'Created test', name)
@@ -165,7 +182,11 @@ def get_test(tid):
     t = cur.fetchone()
     cur.close(); conn.close()
     if not t: return jsonify({'error': 'Not found'}), 404
-    return jsonify(dict(t))
+    t = dict(t)
+    if t.get('questions_encrypted'):
+        t['questions'] = decrypt_questions(t['questions_encrypted'])
+    t.pop('questions_encrypted', None)
+    return jsonify(t)
 
 @app.route('/api/tests/<tid>', methods=['PUT'])
 def update_test(tid):
@@ -175,10 +196,13 @@ def update_test(tid):
     now = datetime.datetime.now().isoformat()
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute('SELECT settings, questions FROM tests WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))', (tid, current_user(), current_user()))
+    cur.execute('SELECT settings, questions, questions_encrypted FROM tests WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))', (tid, current_user(), current_user()))
     old = cur.fetchone()
     new_settings = data.get('settings', {})
     new_questions = data.get('questions', [])
+    if old:
+        old_settings = old['settings'] or {}
+        old_questions = decrypt_questions(old['questions_encrypted']) if old.get('questions_encrypted') else (old['questions'] or [])
     if old:
         old_settings = old['settings'] or {}
         old_questions = old['questions'] or []
@@ -216,8 +240,8 @@ def update_test(tid):
                         log_history(tid, 'Edited question', f"Q{i+1}: {nq.get('cipher','')} — {nq.get('plaintext','')}", oq, nq)
     cur2 = conn.cursor()
     cur2.execute(
-        'UPDATE tests SET settings = %s, questions = %s, modified = %s WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))',
-        (json.dumps(new_settings), json.dumps(new_questions), now, tid, current_user(), current_user())
+        'UPDATE tests SET settings = %s, questions = %s, questions_encrypted = %s, modified = %s WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))',
+        (json.dumps(new_settings), json.dumps(new_questions), encrypt_questions(new_questions), now, tid, current_user(), current_user())
     )
     cur2.close(); cur.close(); conn.close()
     return jsonify({'ok': True})
