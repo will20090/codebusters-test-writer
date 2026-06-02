@@ -224,7 +224,7 @@ def update_test(tid):
     new_questions = data.get('questions', [])
     if old:
         old_settings = old['settings'] or {}
-        old_questions = old['questions_encrypted'] or []
+        old_questions = decrypt_questions(old['questions_encrypted'])
         if old_settings != new_settings:
             log_history(tid, 'Changed tournament settings', '', old_settings, new_settings)
         if len(old_questions) < len(new_questions):
