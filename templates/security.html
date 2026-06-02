@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Privacy & Security — Codebusters Test Builder</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: monospace; background: #f0f0f0; color: #222; min-height: 100vh; }
+#topbar { background: #222; color: #eee; padding: 10px 24px; font-size: 16px; letter-spacing: 1px; font-weight: bold; display: flex; align-items: center; justify-content: space-between; }
+#topbar a { color: #aaa; font-size: 13px; text-decoration: none; }
+#topbar a:hover { color: #fff; }
+#content { max-width: 700px; margin: 40px auto; padding: 0 20px; }
+h2 { font-size: 15px; font-weight: bold; margin-bottom: 12px; margin-top: 28px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+p { font-size: 13px; line-height: 1.7; margin-bottom: 10px; color: #333; }
+.card { background: #fff; border: 1px solid #ddd; padding: 12px 16px; margin-bottom: 8px; }
+.card-title { font-weight: bold; font-size: 13px; margin-bottom: 4px; }
+.card-desc { font-size: 12px; color: #555; line-height: 1.6; }
+code { background: #f0f0f0; padding: 1px 4px; font-family: monospace; font-size: 12px; border: 1px solid #ddd; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  CODEBUSTERS TEST BUILDER
+  <a href="/">← Back to Home</a>
+</div>
+
+<div id="content">
+
+  <h2>Privacy & Security</h2>
+  <p>Understandably, there are concerns about the confidentiality of test content. Here is how all data is stored and protected on this site.</p>
+
+  <h2>Methods</h2>
+
+  <div class="card">
+    <div class="card-title">Encryption of Questions</div>
+    <div class="card-desc">All test questions and content are encrypted before being stored in the database using <a href="https://cryptography.io/en/latest/fernet/" target="_blank">Fernet symmetric encryption</a> (AES-128-CBC with HMAC-SHA256). This means that even though your test data is stored in a database, and somebody can see it, the data is impossible to decipher.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Encryption Key</div>
+    <div class="card-desc">The encryption key is stored as a server-side environment variable and is never exposed to the client or stored in the database. It is only accessible to the server process at runtime.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Access</div>
+    <div class="card-desc">Each test is tied to a specific user account. Only the owner and explicitly shared collaborators can access a test. All API endpoints require authentication and verify ownership before returning any data.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Passwords</div>
+    <div class="card-desc">Passwords are never stored in plaintext. They are hashed using werkzeug.security (PBKDF2 + SHA256) before being saved to the database.</div>
+  </div>
+
+  <h2>Source Code</h2>
+  <p>This project is open source. You can review and verify all the encryption methods listed above: <a href="https://github.com/will20090/codebusters-test-writer" target="_blank">https://github.com/will20090/codebusters-test-writer</a>.</p>
+
+  <h2>Questions or Concerns</h2>
+  <p>If you have any other questions about how your data is handled, contact me at willhuang2027@gmail.com or will2009 on Discord.</p>
+
+</div>
+
+</body>
+</html>

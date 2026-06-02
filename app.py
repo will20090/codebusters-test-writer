@@ -842,5 +842,9 @@ def builder():
 def contact():
     return render_template('contact.html')
 
+@app.route('/security')
+def security():
+    return render_template('security.html')
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
