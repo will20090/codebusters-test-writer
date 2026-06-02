@@ -505,19 +505,27 @@ def nihilist_alphabet(kw):
 
 def _nihilist_format_output(encoded, bs, s=""):
     if bs == 0:
-        words = re.sub(r'[^a-zA-Z ]', '', s).upper().split()
-        word_lengths = [len(w) for w in words]
-        lines = []; line = ""; length = 0; idx = 0
-        for wlen in word_lengths:
-            nums = [str(encoded[idx+i]) for i in range(wlen)]
-            idx += wlen
-            token = ' '.join(nums) + "   "
-            if length + len(token) > 52:
-                lines.append(line.rstrip())
-                line = token; length = len(token)
+        lines = []; current = ""; idx = 0
+        tokens = []
+        for ch in s.upper():
+            if ch.isalpha():
+                tokens.append(('letter', str(encoded[idx])))
+                idx += 1
+            elif ch == ' ':
+                tokens.append(('space', None))
             else:
-                line += token; length += len(token)
-        if line.rstrip(): lines.append(line.rstrip())
+                tokens.append(('punct', ch))
+        for ttype, val in tokens:
+            if ttype == 'letter':
+                current += val + ' '
+            elif ttype == 'space':
+                current = current.rstrip() + '   '
+            else:
+                current += val + ' '
+            if len(current) > 52:
+                lines.append(current.rstrip())
+                current = ""
+        if current.rstrip(): lines.append(current.rstrip())
         return "\n\n\n".join(lines)
     else:
         y = ""; z = 0
@@ -581,18 +589,27 @@ def nihilistFormatter(s, key, pk, bs, value, ntype, hint_type, hint, bonus):
 
 def _porta_format_output(enc, bs, s=""):
     if bs == 0:
-        words = re.sub(r'[^a-zA-Z ]', '', s).upper().split()
-        word_lengths = [len(w) for w in words]
-        lines = []; line = ""; length = 0; idx = 0
-        for wlen in word_lengths:
-            token = ' '.join(enc[idx:idx+wlen]) + "   "
-            idx += wlen
-            if length + len(token) > 52:
-                lines.append(line.rstrip())
-                line = token; length = len(token)
+        lines = []; current = ""; idx = 0
+        tokens = []
+        for ch in s.upper():
+            if ch.isalpha():
+                tokens.append(('letter', enc[idx]))
+                idx += 1
+            elif ch == ' ':
+                tokens.append(('space', None))
             else:
-                line += token; length += len(token)
-        if line.rstrip(): lines.append(line.rstrip())
+                tokens.append(('punct', ch))
+        for ttype, val in tokens:
+            if ttype == 'letter':
+                current += val + ' '
+            elif ttype == 'space':
+                current = current.rstrip() + '   '
+            else:
+                current += val + ' '
+            if len(current) > 52:
+                lines.append(current.rstrip())
+                current = ""
+        if current.rstrip(): lines.append(current.rstrip())
         return "\n\n\n".join(lines)
     else:
         spaced = ""
@@ -743,18 +760,27 @@ def xeno_creator(s, value, xtype, hint_type, hint, alph="", keyword="", shift=""
 
 def _affine_format_output(encoded_str, bs, s=""):
     if bs == 0:
-        words = re.sub(r'[^a-zA-Z ]', '', s).upper().split()
-        word_lengths = [len(w) for w in words]
-        lines = []; line = ""; length = 0; idx = 0
-        for wlen in word_lengths:
-            token = ' '.join(encoded_str[idx:idx+wlen]) + "   "
-            idx += wlen
-            if length + len(token) > 52:
-                lines.append(line.rstrip())
-                line = token; length = len(token)
+        lines = []; current = ""; idx = 0
+        tokens = []
+        for ch in s.upper():
+            if ch.isalpha():
+                tokens.append(('letter', encoded_str[idx]))
+                idx += 1
+            elif ch == ' ':
+                tokens.append(('space', None))
             else:
-                line += token; length += len(token)
-        if line.rstrip(): lines.append(line.rstrip())
+                tokens.append(('punct', ch))
+        for ttype, val in tokens:
+            if ttype == 'letter':
+                current += val + ' '
+            elif ttype == 'space':
+                current = current.rstrip() + '   '
+            else:
+                current += val + ' '
+            if len(current) > 52:
+                lines.append(current.rstrip())
+                current = ""
+        if current.rstrip(): lines.append(current.rstrip())
         return "\n\n\n".join(lines)
     else:
         spaced = ""
@@ -819,17 +845,26 @@ def cb_encode(hkey, vkey, alph, s, bs):
     bs = int(bs)
     if bs == 0:
         pk={alph[j+i*5]:vkey[i]+hkey[j] for i in range(5) for j in range(5)}
-        words = re.sub(r'[^a-zA-Z ]', '', s).upper().split()
-        lines = []; line = ""; length = 0
-        for word in words:
-            encoded_word = ' '.join(pk[c.replace('J','I')] for c in word)
-            token = encoded_word + "   "
-            if length + len(token) > 52:
-                lines.append(line.rstrip())
-                line = token; length = len(token)
+        lines = []; current = ""
+        tokens = []
+        for ch in s.upper():
+            if ch.isalpha():
+                tokens.append(('letter', pk[ch.replace('J','I')]))
+            elif ch == ' ':
+                tokens.append(('space', None))
             else:
-                line += token; length += len(token)
-        if line.rstrip(): lines.append(line.rstrip())
+                tokens.append(('punct', ch))
+        for ttype, val in tokens:
+            if ttype == 'letter':
+                current += val + ' '
+            elif ttype == 'space':
+                current = current.rstrip() + '   '
+            else:
+                current += val + ' '
+            if len(current) > 52:
+                lines.append(current.rstrip())
+                current = ""
+        if current.rstrip(): lines.append(current.rstrip())
         return "\n\n\n".join(lines)
     else:
         pairs = _cb_encode_raw(hkey, vkey, alph, s)
@@ -915,18 +950,31 @@ def homophonic_formatter(s, keyword, value, hint_type, hint, crib, bonus):
     encoded = [random.choice(table[c]) for c in s_clean]
     random.seed()
 
-    # Format output — always preserve original word spacing
-    words = re.sub(r'[^a-zA-Z ]', '', s).upper().replace('J', 'I').split()
+    # Format output — preserve original word spacing and punctuation
     lines = []; line = ""; length = 0; idx = 0
-    for word in words:
-        token = ' '.join(encoded[idx:idx+len(word)]) + '   '
-        idx += len(word)
-        if length + len(token) > 52:
-            lines.append(line.rstrip())
-            line = token; length = len(token)
+    tokens = []
+    for ch in s.upper():
+        if ch.isalpha():
+            tokens.append(('letter', encoded[idx]))
+            idx += 1
+        elif ch == ' ':
+            tokens.append(('space', None))
         else:
-            line += token; length += len(token)
-    if line.rstrip(): lines.append(line.rstrip())
+            tokens.append(('punct', ch))
+    
+    current = ""
+    for ttype, val in tokens:
+        if ttype == 'letter':
+            current += val + ' '
+        elif ttype == 'space':
+            current = current.rstrip() + '   '
+        else:
+            current += val + ' '
+        if len(current) > 52:
+            lines.append(current.rstrip())
+            current = ""
+    if current.rstrip():
+        lines.append(current.rstrip())
     y = '\n\n\n'.join(lines)
     # Build question text
     bonus_text = " \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
