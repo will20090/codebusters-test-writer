@@ -224,10 +224,7 @@ def update_test(tid):
     new_questions = data.get('questions', [])
     if old:
         old_settings = old['settings'] or {}
-        old_questions = decrypt_questions(old['questions_encrypted']) if old.get('questions_encrypted') else []
-    if old:
-        old_settings = old['settings'] or {}
-        old_questions = old['questions'] or []
+        old_questions = old['questions_encrypted'] or []
         if old_settings != new_settings:
             log_history(tid, 'Changed tournament settings', '', old_settings, new_settings)
         if len(old_questions) < len(new_questions):
@@ -487,29 +484,6 @@ def generate():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e), 'trace': traceback.format_exc()})
 
-def estimate_question_height(q):
-    latex = get_latex(q) if isinstance(q, dict) else q
-    height = 3.0
-    verbatim_match = re.findall(r'\\begin\{verbatim\}(.*?)\\end\{verbatim\}', latex, re.DOTALL)
-    for block in verbatim_match:
-        lines = [l for l in block.strip().split('\n') if l.strip()]
-        height += len(lines) * 0.8
-        # freq table
-    if '\\begin{tabular}' in latex:
-        height += 2.5
-        # hill matrix
-    if '\\begin{pmatrix}' in latex:
-        height += 2.0
-        # words bacon
-    if '\\begin{flushleft}' in latex:
-        height += 1.5
-        # poly table
-    if 'arraystretch' in latex:
-        height += 3.5
-        # frac
-    if 'newmoon' in latex:
-        height += 2.5
-    return min(height, 22.0)
 
 def build_latex(settings, questions_data, is_key=False):
     tournament   = settings.get('tournament', 'Tournament Name')
@@ -611,6 +585,25 @@ Team Number: \underline{{\hspace{{3cm}}}}
             flags=_re.DOTALL
         )
         return latex
+    
+    def estimate_question_height(q):
+        latex = get_latex(q) if isinstance(q, dict) else q
+        height = 3.0
+        verbatim_match = re.findall(r'\\begin\{verbatim\}(.*?)\\end\{verbatim\}', latex, re.DOTALL)
+        for block in verbatim_match:
+            lines = [l for l in block.strip().split('\n') if l.strip()]
+            height += len(lines) * 0.8
+        if '\\begin{tabular}' in latex:
+            height += 2.5
+        if '\\begin{pmatrix}' in latex:
+            height += 2.0
+        if '\\begin{flushleft}' in latex:
+            height += 1.5
+        if 'arraystretch' in latex:
+            height += 3.5
+        if 'newmoon' in latex:
+            height += 2.5
+        return min(height, 22.0)
 
     def make_col_rows(qs_indexed):
         rows = ''
