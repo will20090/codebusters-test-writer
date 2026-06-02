@@ -190,7 +190,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
           <!-- Dynamic key fields -->
           <div id="key-hints"></div>
 
-          <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;">
+          <label id="bonus-row" style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;">
             <input type="checkbox" id="f-bonus"> Bonus question
           </label>
 
@@ -466,6 +466,10 @@ function onCipherChange() {
   const cipher = document.getElementById('f-cipher').value;
   const isXeno = cipher === 'XENOCRYPT';
   document.getElementById('nhtilde-btn').style.display = isXeno ? 'inline-block' : 'none';
+    // Hide bonus checkbox for monos
+  const noBonus = new Set(['ARISTOCRAT','PATRISTOCRAT','XENOCRYPT']);
+  document.getElementById('bonus-row').style.display = noBonus.has(cipher) ? 'none' : '';
+  if (noBonus.has(cipher)) document.getElementById('f-bonus').checked = false;
   const ptRow = document.getElementById('f-plaintext').closest('label');
   if (cipher === 'CRYPTARITHM') {
     if (ptRow) ptRow.style.display = 'none';
@@ -817,6 +821,8 @@ function renderList() {
 }
 
 function startEdit(i) {
+  const NO_BONUS_SE = new Set(['ARISTOCRAT','PATRISTOCRAT','XENOCRYPT']);
+  document.getElementById('bonus-row').style.display = NO_BONUS_SE.has(cipher) ? 'none' : '';
   if (editingIndex === i) { cancelEdit(); return; }
   editingIndex = i;
   const q = questions[i];
@@ -1336,6 +1342,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // -- Init --
 buildKeyFields();
 onTypeChange();
+const _c = document.getElementById('f-cipher').value;
+const _NO_BONUS = new Set(['ARISTOCRAT','PATRISTOCRAT','XENOCRYPT']);
+document.getElementById('bonus-row').style.display = _NO_BONUS.has(_c) ? 'none' : '';
 loadTestData();
 updateBonusNums();
 
