@@ -136,19 +136,40 @@ def get_tests():
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(
-        'SELECT id, name, created, modified, jsonb_array_length(questions) as count, true as owned FROM tests WHERE user_id = %s',
+        'SELECT id, name, created, modified, questions_encrypted, true as owned FROM tests WHERE user_id = %s',
         (current_user(),)
     )
     owned = cur.fetchall()
+    # Add question count from encrypted field
+    owned_list = []
+    for t in owned:
+        t = dict(t)
+        try:
+            qs = decrypt_questions(t.get('questions_encrypted',''))
+            t['count'] = len(qs)
+        except:
+            t['count'] = 0
+        t.pop('questions_encrypted', None)
+        owned_list.append(t)
     cur.execute(
-        '''SELECT t.id, t.name, t.created, t.modified, jsonb_array_length(t.questions) as count, false as owned
+        '''SELECT t.id, t.name, t.created, t.modified, t.questions_encrypted, false as owned
            FROM tests t JOIN test_shares ts ON ts.test_id = t.id
            WHERE ts.user_id = %s ORDER BY t.modified DESC''',
         (current_user(),)
     )
     shared = cur.fetchall()
+    shared_list = []
+    for t in shared:
+        t = dict(t)
+        try:
+            qs = decrypt_questions(t.get('questions_encrypted',''))
+            t['count'] = len(qs)
+        except:
+            t['count'] = 0
+        t.pop('questions_encrypted', None)
+        shared_list.append(t)
     cur.close(); conn.close()
-    return jsonify([dict(t) for t in owned] + [dict(t) for t in shared])
+    return jsonify(owned_list + shared_list)
 
 @app.route('/api/tests', methods=['POST'])
 def create_test():
@@ -162,8 +183,8 @@ def create_test():
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
-        'INSERT INTO tests (id, user_id, name, created, modified, settings, questions, questions_encrypted) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
-        (tid, current_user(), name, now, now, json.dumps({}), json.dumps([]), encrypt_questions([]))
+        'INSERT INTO tests (id, user_id, name, created, modified, settings, questions_encrypted) VALUES (%s, %s, %s, %s, %s, %s, %s)',
+        (tid, current_user(), name, now, now, json.dumps({}), encrypt_questions([]))
     )
     cur.close(); conn.close()
     log_history(tid, 'Created test', name)
@@ -196,13 +217,12 @@ def update_test(tid):
     now = datetime.datetime.now().isoformat()
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute('SELECT settings, questions, questions_encrypted FROM tests WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))', (tid, current_user(), current_user()))
-    old = cur.fetchone()
+    cur.execute('SELECT settings, questions_encrypted FROM tests WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))', (tid, current_user(), current_user()))    old = cur.fetchone()
     new_settings = data.get('settings', {})
     new_questions = data.get('questions', [])
     if old:
         old_settings = old['settings'] or {}
-        old_questions = decrypt_questions(old['questions_encrypted']) if old.get('questions_encrypted') else (old['questions'] or [])
+        old_questions = decrypt_questions(old['questions_encrypted']) if old.get('questions_encrypted') else []
     if old:
         old_settings = old['settings'] or {}
         old_questions = old['questions'] or []
@@ -240,8 +260,8 @@ def update_test(tid):
                         log_history(tid, 'Edited question', f"Q{i+1}: {nq.get('cipher','')} — {nq.get('plaintext','')}", oq, nq)
     cur2 = conn.cursor()
     cur2.execute(
-        'UPDATE tests SET settings = %s, questions = %s, questions_encrypted = %s, modified = %s WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))',
-        (json.dumps(new_settings), json.dumps(new_questions), encrypt_questions(new_questions), now, tid, current_user(), current_user())
+        'UPDATE tests SET settings = %s, questions_encrypted = %s, modified = %s WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))',
+        (json.dumps(new_settings), encrypt_questions(new_questions), now, tid, current_user(), current_user())
     )
     cur2.close(); cur.close(); conn.close()
     return jsonify({'ok': True})
