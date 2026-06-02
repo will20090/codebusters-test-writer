@@ -908,7 +908,12 @@ def homophonic_formatter(s, keyword, value, hint_type, hint, crib, bonus):
 
     # Encode
     s_clean = re.sub(r'[^a-zA-Z]', '', s).upper().replace('J', 'I')
+    # Seed random for reproducibility so crib hints always match ciphertext
+    import hashlib
+    seed = int(hashlib.md5((s + keyword).encode()).hexdigest(), 16) % (2**32)
+    random.seed(seed)
     encoded = [random.choice(table[c]) for c in s_clean]
+    random.seed()
 
     # Format output — always preserve original word spacing
     words = re.sub(r'[^a-zA-Z ]', '', s).upper().replace('J', 'I').split()
