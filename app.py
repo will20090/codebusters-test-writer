@@ -1,3 +1,4 @@
+import re
 from flask import Flask, request, jsonify, send_file, session, render_template
 import subprocess, tempfile, os, json, traceback, shutil, sys, datetime, uuid
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -217,7 +218,8 @@ def update_test(tid):
     now = datetime.datetime.now().isoformat()
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute('SELECT settings, questions_encrypted FROM tests WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))', (tid, current_user(), current_user()))    old = cur.fetchone()
+    cur.execute('SELECT settings, questions_encrypted FROM tests WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))', (tid, current_user(), current_user()))    
+    old = cur.fetchone()
     new_settings = data.get('settings', {})
     new_questions = data.get('questions', [])
     if old:
