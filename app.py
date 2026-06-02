@@ -487,6 +487,30 @@ def generate():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e), 'trace': traceback.format_exc()})
 
+def estimate_question_height(q):
+    latex = get_latex(q) if isinstance(q, dict) else q
+    height = 3.0
+    verbatim_match = re.findall(r'\\begin\{verbatim\}(.*?)\\end\{verbatim\}', latex, re.DOTALL)
+    for block in verbatim_match:
+        lines = [l for l in block.strip().split('\n') if l.strip()]
+        height += len(lines) * 0.8
+        # freq table
+    if '\\begin{tabular}' in latex:
+        height += 2.5
+        # hill matrix
+    if '\\begin{pmatrix}' in latex:
+        height += 2.0
+        # words bacon
+    if '\\begin{flushleft}' in latex:
+        height += 1.5
+        # poly table
+    if 'arraystretch' in latex:
+        height += 3.5
+        # frac
+    if 'newmoon' in latex:
+        height += 2.5
+    return min(height, 22.0)
+
 def build_latex(settings, questions_data, is_key=False):
     tournament   = settings.get('tournament', 'Tournament Name')
     division     = settings.get('division', 'Division')
@@ -704,12 +728,25 @@ Rank: \underline{{\hspace{{1.5cm}}}}
 {"".join(answer_lines)}\end{{questions}}
 """
     else:
-        # Insert \clearpage every 2 questions to prevent page splits
         questions_latex_list = []
+        page_used = 0.0
+        PAGE_HEIGHT = 22.0
         for idx, q in enumerate(questions_data):
-            questions_latex_list.append(get_latex(q))
-            if (idx + 1) % 2 == 0 and idx < len(questions_data) - 1:
-                questions_latex_list.append('\n\\clearpage\n')
+            qh = estimate_question_height(q)
+            if idx == 0:
+                questions_latex_list.append(get_latex(q))
+                page_used = qh
+            else:
+                if page_used + qh > PAGE_HEIGHT:
+                    questions_latex_list.append('\n\\clearpage\n')
+                    questions_latex_list.append(get_latex(q))
+                    page_used = qh
+                else:
+                    questions_latex_list.append(f'\n\\Needspace{{{qh:.1f}cm}}\n')
+                    questions_latex_list.append(get_latex(q))
+                    page_used += qh
+                if page_used > PAGE_HEIGHT / 2 and idx % 2 == 1:
+                    page_used = 0.0
         middle_section = rf"""
 {scoring_page}
 \newpage
@@ -761,6 +798,8 @@ Replacement&&&&&&&&&&&&&&&&&&&&&&&&&&\\
 \usepackage{{bm}}
 \usepackage{{enumitem}}
 \usepackage{{mdframed}}
+\usepackage{{needspace}}
+
 
 {col_type}
 \renewcommand{{\questionshook}}{{\setlength{{\leftmargin}}{{20pt}}}}
