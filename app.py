@@ -383,13 +383,15 @@ def latex_escape(s):
             .replace('}',  r'\}')
             .replace('~',  r'\textasciitilde{}'))
 
-def make_answer_line(q_num, answer, bold, keyword=None):
+def make_answer_line(q_num, answer, bold, keyword=None, value=None, bonus=False):
+    pts = f'({value} pts.) ' if value else ''
+    star = r'$\bigstar$ ' if bonus else ''
     if keyword is not None and keyword != '':
         safe_kw = latex_escape(str(keyword))
         safe_pt = latex_escape(str(answer))
-        return rf'\question \textbf{{{safe_kw}}}: {safe_pt}' + '\n'
+        return rf'\question {pts}{star}\textbf{{{safe_kw}}}: {safe_pt}' + '\n'
     safe = latex_escape(str(answer))
-    return rf'\question {safe}' + '\n'
+    return rf'\question {pts}{star}{safe}' + '\n'
 
 def dispatch(row):
     cipher    = row.get('cipher','').upper()
@@ -533,15 +535,32 @@ def build_latex(settings, questions_data, is_key=False):
             f.write(base64.b64decode(b64data))
         img_latex = rf'\includegraphics[width=10cm,height=6cm,keepaspectratio]{{{img_tmp}}}'
 
+    compdate_line = rf'{{\large {compdate}}} \\[1.2em]' if compdate else ''
     if is_key:
         cover = rf"""
 \begin{{center}}
 {{\Large \textbf{{Codebusters {division} KEY}}}} \\[0.4em]
 {{\large {tournament}}} \\[0.2em]
-{{\large {compdate}}} \\[1.2em]
+{compdate_line}
 {img_latex}
 \end{{center}}
 \vspace{{2em}}
+\begin{{mdframed}}
+\textbf{{Grading Instructions:}}
+\begin{{itemize}}[leftmargin=1.4em,itemsep=2pt,topsep=4pt]
+  \item \textbf{{DO NOT SHOW THIS TO ANY COMPETITOR BEFORE, DURING, OR AFTER THE TEST}}
+  \item For the timed question: competitors are allowed up to two errors in their deciphered plaintext to still be awarded full points, as well as eligibility for the Timed Bonus (2$\cdot{{}}$(600-time taken in seconds))
+  \item The Timed Bonus is to be added to the points already existing for the Timed Question.
+  \item There are two types of questions: ones that require a deciphered quote, and ones that require a deciphered keyword/keyphrase
+  \item For questions requiring a deciphered quote, up to two errors may be in the quote for it to be considered correct. An error can be: an added letter, an incorrect letter, or a missing letter.
+  \item For each succeeding error, 100 points will be taken off the question's points until it reaches 0.
+  \item For questions requiring a deciphered keyword/phrase, the required phrase is at the beginning of the problem, in \textbf{{bold}}. The quote does not have to be solved.
+  \item Zero errors are allowed in order for the question to be correct. For each succeeding error, deduct 100 points from the question's points until it reaches 0.
+  \item The three Special Bonus questions are marked with a star. A team must solve a question correctly in order to have bonus points awarded for it.
+  \item For each Special Bonus question answered correctly, award 150, 400, or 750 extra points for 1, 2, and 3 questions, respectively.
+\end{{itemize}}
+\end{{mdframed}}
+\vspace{{1em}}
 \begin{{center}}
 \textbf{{\underline{{Written By:}}}} \\[0.4em]
 {writers}
@@ -722,18 +741,20 @@ Rank: \underline{{\hspace{{1.5cm}}}}
                 answer  = q.get('answer', '')
                 bold    = q.get('answer_bold', False)
                 keyword = q.get('keyword') or None
-                answer_lines.append(make_answer_line(i+1, answer, bold, keyword))
+                value   = q.get('payload', {}).get('value') if isinstance(q.get('payload'), dict) else None
+                bonus   = bool(q.get('bonus', False))
+                answer_lines.append(make_answer_line(i+1, answer, bold, keyword, value, bonus))
             else:
                 answer_lines.append(r'\question ???' + '\n')
         middle_section = rf"""
 \newpage
 \thispagestyle{{headandfoot}}
-\textbf{{Timed Question.}} ({tqvalue}~Points) \quad \textbf{{Answer:}} {tq_answer}
+\textbf{{Timed Question.}} ({tqvalue}~Points) \quad {tq_answer}
 
 \vspace{{0.6em}}
 \begin{{questions}}
 {"".join(answer_lines)}\end{{questions}}
-"""
+""" 
     else:
         questions_latex_list = []
         page_used = 0.0
