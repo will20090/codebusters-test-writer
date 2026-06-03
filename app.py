@@ -927,6 +927,17 @@ def download():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
     
+@app.route('/api/practice/keywords', methods=['GET'])
+def get_keywords():
+    err = require_login()
+    if err: return err
+    path = os.path.join(BASE, 'keywords.txt')
+    if not os.path.exists(path):
+        return jsonify([])
+    with open(path, encoding='utf-8') as f:
+        lines = [l.strip().upper() for l in f if l.strip()]
+    return jsonify(lines)
+
 @app.route('/api/practice/quotes', methods=['GET'])
 def get_quotes():
     err = require_login()
@@ -937,6 +948,17 @@ def get_quotes():
     with open(quotes_path, encoding='utf-8') as f:
         lines = [l.strip() for l in f if l.strip()]
     return jsonify(lines)
+
+@app.route('/api/practice/checkkw', methods=['GET'])
+def get_checkkw():
+    err = require_login()
+    if err: return err
+    path = os.path.join(BASE, 'checkkw.txt')
+    if not os.path.exists(path):
+        return jsonify([])
+    with open(path, encoding='utf-8') as f:
+        lines = [l.strip().upper() for l in f if l.strip()]
+    return jsonify([w for w in lines if len(w) == 5])
 
 @app.route('/api/practice/homokw', methods=['GET'])
 def get_homokw():

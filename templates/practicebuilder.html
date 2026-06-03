@@ -152,20 +152,6 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
 
           <hr class="section-sep">
 
-          <!-- Quote source -->
-          <div class="gen-row">
-            <label class="span4">Quote Source
-              <select id="f-quote-source">
-                <option value="random">Random from quotes file</option>
-                <option value="manual">Manual plaintext (one per line)</option>
-              </select>
-            </label>
-          </div>
-          <div id="manual-quotes-wrap" style="display:none;margin-bottom:8px;">
-            <label style="font-size:11px;color:#555;display:block;margin-bottom:2px;">Manual Plaintexts (one per line, will be used in order then repeated):</label>
-            <textarea id="f-manual-quotes" style="width:100%;height:80px;font-family:monospace;font-size:12px;border:1px solid #ccc;padding:4px;resize:vertical;" placeholder="THE QUICK BROWN FOX&#10;SPHINX OF BLACK QUARTZ&#10;PACK MY BOX WITH FIVE DOZEN LIQUOR JUGS"></textarea>
-          </div>
-
           <div id="form-error"></div>
 
           <button id="generate-btn" onclick="generateAll()">Generate Practice Test</button>
@@ -525,14 +511,6 @@ function renderQueue() {
   totalEl.textContent = `(${total} total questions)`;
 }
 
-// ── Quote source ───────────────────────────────────────────────────────────────
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('f-quote-source').addEventListener('change', function() {
-    document.getElementById('manual-quotes-wrap').style.display =
-      this.value === 'manual' ? 'block' : 'none';
-  });
-});
 
 // ── Generation ─────────────────────────────────────────────────────────────────
 
@@ -543,17 +521,7 @@ async function generateAll() {
     return;
   }
 
-  const totalToGen = queueEntries.reduce((s, e) => s + e.count, 0);
-  const quoteSource = document.getElementById('f-quote-source').value;
-  let manualPlaintexts = [];
-  if (quoteSource === 'manual') {
-    const raw = document.getElementById('f-manual-quotes').value;
-    manualPlaintexts = raw.split('\n').map(l => l.trim()).filter(Boolean);
-    if (!manualPlaintexts.length) {
-      document.getElementById('form-error').textContent = 'Enter at least one plaintext for manual mode.';
-      return;
-    }
-  }
+const totalToGen = queueEntries.reduce((s, e) => s + e.count, 0);
 
   const btn = document.getElementById('generate-btn');
   btn.disabled = true; btn.textContent = 'Generating...';
@@ -561,8 +529,9 @@ async function generateAll() {
   document.getElementById('progress-bar').style.width = '0%';
 
   // Fetch available quotes and homophonic keywords from server
+  // Fetch available quotes and homophonic keywords from server
   let quotes = [];
-  let homoKws = [];
+
   try {
     const r = await fetch('/api/practice/quotes');
     if (r.ok) quotes = await r.json();
@@ -571,31 +540,20 @@ async function generateAll() {
     const r = await fetch('/api/practice/homokw');
     if (r.ok) homoKws = await r.json();
   } catch(e) {}
-  if (!homoKws.length) homoKws = ['KEYS','WORD','LOCK','CODE','ZONE','FLUX','MIND','WAVE'];
-  if (!quotes.length) {
-    quotes = [
-      "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
-      "TO BE OR NOT TO BE THAT IS THE QUESTION",
-      "ALL THAT GLITTERS IS NOT GOLD",
-      "THE ONLY THING WE HAVE TO FEAR IS FEAR ITSELF",
-      "IN THE BEGINNING GOD CREATED THE HEAVENS AND THE EARTH",
-      "FOUR SCORE AND SEVEN YEARS AGO OUR FATHERS BROUGHT FORTH ON THIS CONTINENT",
-      "ASK NOT WHAT YOUR COUNTRY CAN DO FOR YOU",
-      "WE SHALL FIGHT ON THE BEACHES",
-      "IT WAS THE BEST OF TIMES IT WAS THE WORST OF TIMES",
-      "CALL ME ISHMAEL",
-      "SCIENCE IS NOT ONLY COMPATIBLE WITH SPIRITUALITY IT IS A PROFOUND SOURCE OF SPIRITUALITY",
-      "THE UNIVERSE IS UNDER NO OBLIGATION TO MAKE SENSE TO YOU",
-      "IMAGINATION IS MORE IMPORTANT THAN KNOWLEDGE",
-      "THE ONLY WAY TO DO GREAT WORK IS TO LOVE WHAT YOU DO",
-      "MATHEMATICS IS THE LANGUAGE IN WHICH GOD HAS WRITTEN THE UNIVERSE",
-    ];
-  }
-
-
+  try {
+    const r = await fetch('/api/practice/checkkw');
+    if (r.ok) checkKws = await r.json();
+  } catch(e) {}
+  try {
+    const r = await fetch('/api/practice/keywords');
+    if (r.ok) keywords = await r.json();
+  } catch(e) {}
+  if (!quotes.length) quotes = ["THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG"];
+  if (!homoKws.length) homoKws = ['KEYS'];
+  if (!checkKws.length) checkKws = ['FAILS'];
+  keywords = keywords.filter(w => w.length >= 6);
+  console.log('quotes:', quotes.length, 'homoKws:', homoKws.length, 'checkKws:', checkKws.length, 'keywords:', keywords.length);
   let generated = 0;
-  const quotePool = quoteSource === 'manual' ? manualPlaintexts : quotes;
-  let quoteIdx = 0;
 
   // Build flat list of generation tasks
   const tasks = [];
@@ -644,7 +602,7 @@ async function generateAll() {
     if (poolIdxs[task.cipher] === undefined) poolIdxs[task.cipher] = 0;
     const pt = pool[poolIdxs[task.cipher]++ % pool.length];
 
-    const payload = buildPayloadFromTask(task, pt, homoKws);
+    const payload = buildPayloadFromTask(task, pt, homoKws, checkKws);
 
     try {
       const res = await fetch('/api/generate', {
@@ -693,7 +651,7 @@ async function generateAll() {
   }, 2000);
 }
 
-function buildPayloadFromTask(task, pt, homoKws = []) {
+function buildPayloadFromTask(task, pt, homoKws = [], checkKws = []) {
   const cipher = task.cipher;
   const typeVal = task.type;
   const kc = task.keyConfig || {};
@@ -752,7 +710,7 @@ function buildPayloadFromTask(task, pt, homoKws = []) {
   }
 
   if (cipher === 'FRACMORSE') {
-    const kw = key1 || randomKeyword(5, 8);
+    const kw = key1 || randomKeyword(5, 99);
     const autoCrib = autoPickCribMin4(pt);
     const htype = hint_type || 'None';
     return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
@@ -760,8 +718,8 @@ function buildPayloadFromTask(task, pt, homoKws = []) {
   }
 
   if (cipher === 'NIHILIST') {
-    const kw  = key1 || randomKeyword(4, 7);
-    const pk  = key2 || randomKeyword(5, 8);
+    const kw  = key1 || randomKeyword(4, 9);
+    const pk  = key2 || randomKeyword(4, 9);
     const bs  = key3 !== '' ? key3 : '5';
     const crib = (typeVal === 'CRIB') ? (key4 || autoPickCribMin4(pt)) : '';
     return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
@@ -769,7 +727,7 @@ function buildPayloadFromTask(task, pt, homoKws = []) {
   }
 
   if (cipher === 'PORTA') {
-    const kw = key1 || randomKeyword(4, 7);
+    const kw = key1 || randomKeyword(4, 9);
     const bs = key3 !== '' ? key3 : '5';
     const crib = (typeVal === 'CRIB') ? (key4 || autoPickCribMin4(pt)) : '';
     return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
@@ -777,9 +735,13 @@ function buildPayloadFromTask(task, pt, homoKws = []) {
   }
 
   if (cipher === 'CHECKERBOARD') {
-    const hkey = key1 || randomUniq5();
-    const vkey = key2 || randomUniq5();
-    const pk3  = key3 || randomKeyword(4, 7);
+    function randCheckKw() {
+      if (checkKws.length) return checkKws[Math.floor(Math.random() * checkKws.length)];
+      return randomUniq5();
+    }
+    const hkey = key1 || randCheckKw();
+    const vkey = key2 || randCheckKw();
+    const pk3  = key3 || randomKeyword(4, 9);
     const bs   = key4 !== '' ? key4 : '5';
     const crib = (typeVal === 'CRIB') ? (hint || autoPickCribMin4(pt)) : '';
     return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
@@ -813,12 +775,15 @@ function buildPayloadFromTask(task, pt, homoKws = []) {
 
 // ── Random helpers ─────────────────────────────────────────────────────────────
 
-const COMMON_WORDS = ['SCIENCE','NATURE','WORLD','LIGHT','POWER','DREAM','FORCE','STONE','WATER','EARTH',
-  'PLANET','SYSTEM','ENERGY','MOTION','THEORY','MATTER','SIGNAL','CIPHER','SECRET','HIDDEN',
-  'BRIDGE','CASTLE','GARDEN','WINDOW','MIRROR','FOREST','STREAM','DESERT','ISLAND','VALLEY'];
+let keywords = [];
+let homoKws = [];
+let checkKws = [];
+
+const COMMON_WORDS = ['ERRORS'];
 
 function randomKeyword(minLen, maxLen) {
-  const candidates = COMMON_WORDS.filter(w => w.length >= minLen && w.length <= maxLen);
+  const pool = keywords.length ? keywords : COMMON_WORDS;
+  const candidates = pool.filter(w => w.length >= minLen && w.length <= maxLen);
   if (!candidates.length) return 'KEYWORD';
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
