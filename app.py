@@ -137,7 +137,7 @@ def get_tests():
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute(
-        'SELECT id, name, created, modified, questions_encrypted, true as owned FROM tests WHERE user_id = %s',
+        'SELECT id, name, created, modified, questions_encrypted, settings, true as owned FROM tests WHERE user_id = %s',
         (current_user(),)
     )
     owned = cur.fetchall()
@@ -151,9 +151,15 @@ def get_tests():
         except:
             t['count'] = 0
         t.pop('questions_encrypted', None)
+        settings = t.get('settings') or {}
+        if isinstance(settings, str):
+            try: settings = json.loads(settings)
+            except: settings = {}
+        t['is_practice'] = bool(settings.get('is_practice', False))
+        t.pop('settings', None)
         owned_list.append(t)
     cur.execute(
-        '''SELECT t.id, t.name, t.created, t.modified, t.questions_encrypted, false as owned
+        '''SELECT t.id, t.name, t.created, t.modified, t.questions_encrypted, t.settings, false as owned
            FROM tests t JOIN test_shares ts ON ts.test_id = t.id
            WHERE ts.user_id = %s ORDER BY t.modified DESC''',
         (current_user(),)
@@ -168,6 +174,12 @@ def get_tests():
         except:
             t['count'] = 0
         t.pop('questions_encrypted', None)
+        settings = t.get('settings') or {}
+        if isinstance(settings, str):
+            try: settings = json.loads(settings)
+            except: settings = {}
+        t['is_practice'] = bool(settings.get('is_practice', False))
+        t.pop('settings', None)
         shared_list.append(t)
     cur.close(); conn.close()
     return jsonify(owned_list + shared_list)
@@ -179,17 +191,19 @@ def create_test():
     data = request.get_json()
     name = data.get('name','').strip()
     if not name: return jsonify({'error': 'Test name required'}), 400
+    is_practice = bool(data.get('is_practice', False))
     tid = nid()
     now = datetime.datetime.now().isoformat()
+    initial_settings = {'is_practice': True} if is_practice else {}
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
         'INSERT INTO tests (id, user_id, name, created, modified, settings, questions_encrypted) VALUES (%s, %s, %s, %s, %s, %s, %s)',
-        (tid, current_user(), name, now, now, json.dumps({}), encrypt_questions([]))
+        (tid, current_user(), name, now, now, json.dumps(initial_settings), encrypt_questions([]))
     )
     cur.close(); conn.close()
     log_history(tid, 'Created test', name)
-    return jsonify({'id': tid, 'name': name, 'created': now, 'modified': now, 'settings': {}, 'questions': []})
+    return jsonify({'id': tid, 'name': name, 'created': now, 'modified': now, 'settings': initial_settings, 'questions': []})
 
 @app.route('/api/tests/<tid>', methods=['GET'])
 def get_test(tid):
@@ -815,6 +829,57 @@ Replacement&&&&&&&&&&&&&&&&&&&&&&&&&&\\
 \end{{document}}
 """
 
+
+@app.route('/api/practice/preview', methods=['POST'])
+def practice_preview():
+    err = require_login()
+    if err: return err
+    try:
+        d = request.get_json()
+        practice_settings = {
+            'tournament': 'Practice Test',
+            'division': '',
+            'compdate': '',
+            'tqvalue': '250',
+            'tqphrase': 'raise your hand',
+            'tqcipher': '',
+            'writers': '',
+            'bonus_nums': 'None',
+            'cover_image': '',
+        }
+        latex = build_latex(practice_settings, d.get('questions', []), d.get('is_key', False))
+        return send_file(compile_pdf(latex), mimetype='application/pdf')
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/practice/download', methods=['POST'])
+def practice_download():
+    err = require_login()
+    if err: return err
+    try:
+        d = request.get_json()
+        is_key = d.get('is_key', False)
+        test_name = re.sub(r'[^a-zA-Z0-9 ]', '', d.get('test_name', 'Practice Test')).strip()
+        suffix = 'KEY' if is_key else 'TEST'
+        name = f'{test_name} {suffix}.pdf'
+        practice_settings = {
+            'tournament': test_name,
+            'division': '',
+            'compdate': '',
+            'tqvalue': '250',
+            'tqphrase': 'raise your hand',
+            'tqcipher': '',
+            'writers': '',
+            'bonus_nums': 'None',
+            'cover_image': '',
+        }
+        latex = build_latex(practice_settings, d.get('questions', []), is_key)
+        return send_file(compile_pdf(latex), mimetype='application/pdf',
+                         as_attachment=True, download_name=name)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 def compile_pdf(latex_str):
     tmpdir = tempfile.mkdtemp()
     tex = os.path.join(tmpdir, 'test.tex')
@@ -861,6 +926,28 @@ def download():
         return send_file(compile_pdf(latex), mimetype='application/pdf', as_attachment=True, download_name=name)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@app.route('/api/practice/quotes', methods=['GET'])
+def get_quotes():
+    err = require_login()
+    if err: return err
+    quotes_path = os.path.join(BASE, 'quotes.txt')
+    if not os.path.exists(quotes_path):
+        return jsonify([])
+    with open(quotes_path, encoding='utf-8') as f:
+        lines = [l.strip() for l in f if l.strip()]
+    return jsonify(lines)
+
+@app.route('/api/practice/homokw', methods=['GET'])
+def get_homokw():
+    err = require_login()
+    if err: return err
+    path = os.path.join(BASE, 'homokw.txt')
+    if not os.path.exists(path):
+        return jsonify([])
+    with open(path, encoding='utf-8') as f:
+        lines = [l.strip().upper() for l in f if l.strip()]
+    return jsonify([w for w in lines if len(w) == 4])
 
 @app.route('/')
 def home():
@@ -877,6 +964,12 @@ def contact():
 @app.route('/security')
 def security():
     return render_template('security.html')
+
+@app.route('/practice')
+def practice():
+    return render_template('practicebuilder.html')
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

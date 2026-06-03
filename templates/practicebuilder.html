@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Codebusters Practice Test Builder</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222; }
+
+#app { display: flex; flex-direction: column; height: 100vh; }
+#top-bar { background: #222; color: #eee; padding: 8px 16px; display: flex; align-items: center; gap: 16px; flex-shrink: 0; flex-wrap: wrap; }
+#top-bar h1 { font-size: 15px; letter-spacing: 1px; }
+#top-bar button { background: #444; color: #eee; border: 1px solid #666; padding: 4px 10px; cursor: pointer; font-family: monospace; }
+#top-bar button:hover { background: #555; }
+#main { display: flex; flex: 1; overflow: hidden; }
+
+/* Left panel */
+#left { width: 55%; display: flex; flex-direction: column; border-right: 1px solid #ccc; overflow: hidden; }
+#panel-questions { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+/* Generator form */
+#form-panel { background: #fff; border-bottom: 2px solid #aaa; padding: 10px 14px; flex-shrink: 0; overflow-y: auto; max-height: 70vh; }
+#form-panel h2 { font-size: 13px; margin-bottom: 8px; font-weight: bold; }
+
+.gen-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; align-items: end; }
+.gen-row label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: #555; }
+.gen-row input, .gen-row select { font-family: monospace; font-size: 12px; border: 1px solid #ccc; padding: 3px 5px; width: 100%; }
+.gen-row .span2 { grid-column: span 2; }
+.gen-row .span4 { grid-column: span 4; }
+
+#cipher-queue { margin-bottom: 10px; }
+.cipher-entry { background: #f8f8f8; border: 1px solid #ddd; padding: 6px 10px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.cipher-entry .ce-label { flex: 1; }
+.cipher-entry .ce-count { background: #222; color: #fff; font-size: 11px; padding: 1px 7px; }
+.cipher-entry .ce-del { color: #999; cursor: pointer; font-size: 15px; padding: 0 4px; }
+.cipher-entry .ce-del:hover { color: #c00; }
+
+#queue-header { font-size: 11px; color: #555; margin-bottom: 4px; }
+#total-count { font-size: 11px; color: #888; margin-left: 8px; }
+
+.section-sep { border: none; border-top: 1px solid #e0e0e0; margin: 10px 0; }
+
+#generate-btn { background: #222; color: #fff; border: none; padding: 6px 18px; cursor: pointer; font-family: monospace; font-size: 13px; margin-top: 6px; }
+#generate-btn:hover { background: #444; }
+#generate-btn:disabled { background: #999; cursor: default; }
+#form-error { color: red; font-size: 11px; margin-top: 4px; min-height: 14px; }
+#progress-bar-wrap { display: none; margin-top: 8px; background: #e0e0e0; height: 8px; }
+#progress-bar { height: 8px; background: #222; width: 0%; transition: width 0.2s; }
+#progress-label { font-size: 11px; color: #555; margin-top: 3px; }
+
+/* Question list */
+#list-header { background: #e8e8e8; padding: 6px 14px; font-size: 11px; color: #555; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; flex-shrink: 0; }
+#question-list { flex: 1; overflow-y: auto; padding: 6px; }
+.q-row { background: #fff; border: 1px solid #ddd; margin-bottom: 4px; padding: 6px 10px; display: flex; align-items: flex-start; gap: 8px; cursor: grab; user-select: none; }
+.q-row:active { cursor: grabbing; }
+.q-row.dragging { opacity: 0.4; }
+.q-row.drag-over { border-top: 2px solid #222; }
+.q-num { font-weight: bold; min-width: 22px; color: #888; }
+.q-info { flex: 1; }
+.q-title { font-weight: bold; font-size: 12px; }
+.q-sub { font-size: 11px; color: #666; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 340px; }
+.q-del { color: #999; cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; }
+.q-del:hover { color: #c00; }
+
+/* Right panel */
+#right { flex: 1; display: flex; flex-direction: column; }
+#preview-tabs { background: #e0e0e0; display: flex; border-bottom: 1px solid #ccc; }
+.tab { padding: 7px 18px; cursor: pointer; font-family: monospace; font-size: 13px; border-right: 1px solid #ccc; }
+.tab.active { background: #fff; font-weight: bold; }
+#preview-toolbar { background: #f0f0f0; padding: 5px 12px; display: flex; gap: 8px; border-bottom: 1px solid #ccc; align-items: center; }
+#preview-toolbar button { background: #333; color: #fff; border: none; padding: 4px 12px; cursor: pointer; font-family: monospace; }
+#preview-toolbar button:hover { background: #555; }
+#preview-status { font-size: 11px; color: #666; margin-left: 8px; }
+#preview-frame { flex: 1; border: none; background: #888; }
+#preview-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: #888; font-size: 14px; background: #ddd; }
+
+/* Key config rows */
+#key-config-wrap { margin-top: 8px; }
+#key-config-wrap label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: #555; margin-bottom: 5px; }
+#key-config-wrap input, #key-config-wrap select { font-family: monospace; font-size: 12px; border: 1px solid #ccc; padding: 3px 5px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Top bar -->
+  <div id="top-bar">
+    <button onclick="goHome()">← My Tests</button>
+    <h1 id="test-title">PRACTICE TEST BUILDER</h1>
+    <span id="save-status" style="font-size:11px;color:#aaa;margin-right:8px"></span>
+    <button onclick="downloadPDF(false)">Download Test PDF</button>
+    <button onclick="downloadPDF(true)">Download Key PDF</button>
+  </div>
+
+  <div id="main">
+
+    <!-- LEFT -->
+    <div id="left">
+      <div id="panel-questions">
+
+        <!-- Generator Form -->
+        <div id="form-panel">
+          <h2>Build Practice Test</h2>
+
+          <!-- Cipher selector row -->
+          <div class="gen-row">
+            <label class="span2">Cipher
+              <select id="f-cipher" onchange="onCipherChange()">
+                <option value="ARISTOCRAT">Aristocrat</option>
+                <option value="PATRISTOCRAT">Patristocrat</option>
+                <option value="XENOCRYPT">Xenocrypt</option>
+                <option value="ATBASH">Atbash</option>
+                <option value="BACONIAN">Baconian</option>
+                <option value="CAESAR">Caesar</option>
+                <option value="COLUMNAR">Complete Columnar</option>
+                <option value="FRACMORSE">Fractionated Morse</option>
+                <option value="NIHILIST">Nihilist</option>
+                <option value="PORTA">Porta</option>
+                <option value="CHECKERBOARD">Checkerboard</option>
+                <option value="HOMOPHONIC">Homophonic</option>
+              </select>
+            </label>
+            <label>Type
+              <select id="f-type" onchange="onTypeChange()">
+                <option value="DECODE">Decode</option>
+              </select>
+            </label>
+            <label>Count
+              <input id="f-count" type="number" value="1" min="1" max="20" style="width:100%">
+            </label>
+          </div>
+
+          <!-- Dynamic key config for this cipher -->
+          <div id="key-config-wrap"></div>
+
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+            <button type="button" onclick="addToQueue()" style="background:#444;color:#eee;border:1px solid #666;padding:4px 12px;cursor:pointer;font-family:monospace;font-size:12px;">+ Add to Queue</button>
+            <span style="font-size:11px;color:#888;">Add multiple cipher types to generate a mixed test</span>
+          </div>
+
+          <hr class="section-sep">
+
+          <!-- Queue display -->
+          <div id="queue-header">
+            <b>Generation Queue</b>
+            <span id="total-count"></span>
+            <button type="button" onclick="clearQueue()" style="margin-left:10px;background:none;border:1px solid #ccc;padding:1px 8px;cursor:pointer;font-family:monospace;font-size:11px;">Clear All</button>
+          </div>
+          <div id="cipher-queue">
+            <div id="queue-empty" style="color:#888;font-size:11px;padding:4px 0;">No ciphers queued yet. Add some above.</div>
+          </div>
+
+          <hr class="section-sep">
+
+          <!-- Quote source -->
+          <div class="gen-row">
+            <label class="span4">Quote Source
+              <select id="f-quote-source">
+                <option value="random">Random from quotes file</option>
+                <option value="manual">Manual plaintext (one per line)</option>
+              </select>
+            </label>
+          </div>
+          <div id="manual-quotes-wrap" style="display:none;margin-bottom:8px;">
+            <label style="font-size:11px;color:#555;display:block;margin-bottom:2px;">Manual Plaintexts (one per line, will be used in order then repeated):</label>
+            <textarea id="f-manual-quotes" style="width:100%;height:80px;font-family:monospace;font-size:12px;border:1px solid #ccc;padding:4px;resize:vertical;" placeholder="THE QUICK BROWN FOX&#10;SPHINX OF BLACK QUARTZ&#10;PACK MY BOX WITH FIVE DOZEN LIQUOR JUGS"></textarea>
+          </div>
+
+          <div id="form-error"></div>
+
+          <button id="generate-btn" onclick="generateAll()">Generate Practice Test</button>
+          <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+          <div id="progress-label"></div>
+        </div><!-- end form-panel -->
+
+        <div id="list-header">
+          <span id="list-count">0 questions</span>
+          <span style="display:flex;align-items:center;gap:8px;">
+            <button onclick="randomizeOrder()" style="background:#444;color:#eee;border:1px solid #666;padding:2px 8px;cursor:pointer;font-family:monospace;font-size:11px;">randomize order</button>
+            <span>drag to reorder</span>
+          </span>
+        </div>
+        <div id="question-list"></div>
+
+      </div>
+    </div><!-- end left -->
+
+    <!-- RIGHT: PDF preview -->
+    <div id="right">
+      <div id="preview-tabs">
+        <div class="tab active" id="tab-test" onclick="switchTab('test')">Test</div>
+        <div class="tab" id="tab-key" onclick="switchTab('key')">Answer Key</div>
+      </div>
+      <div id="preview-toolbar">
+        <button onclick="refreshPreview()">Refresh Preview</button>
+        <span id="preview-status">Generate questions to preview the PDF.</span>
+      </div>
+      <div id="preview-placeholder">Generate questions, then click Refresh Preview.</div>
+      <iframe id="preview-frame" style="display:none"></iframe>
+    </div>
+
+  </div>
+</div>
+
+<script charset="utf-8">
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let questions = [];
+let activeTab = 'test';
+let currentTestId = sessionStorage.getItem('practiceTestId') || null;
+let saveTimer = null;
+let queueEntries = []; // [{cipher, type, count, keyConfig}]
+
+// ── Cipher config definitions ─────────────────────────────────────────────────
+// For each cipher we expose only the params that matter for practice generation:
+// - monoalphs: alph type (K1/K2/K3/random), hint type
+// - others: their specific keys
+
+const CIPHER_TYPES_MAP = {
+  ARISTOCRAT:   ['DECODE', 'EXTRACT'],
+  PATRISTOCRAT: ['DECODE', 'EXTRACT'],
+  XENOCRYPT:    ['DECODE', 'EXTRACT'],
+  ATBASH:       ['DECODE'],
+  BACONIAN:     ['LETTERS', 'RANDOM_LETTERS', 'SEQUENCE', 'WORDS'],
+  CAESAR:       ['DECODE'],
+  COLUMNAR:     ['DECODE'],
+  CRYPTARITHM:  ['DECODE'],
+  FRACMORSE:    ['DECODE'],
+  NIHILIST:     ['DECODE', 'CRIB'],
+  PORTA:        ['DECODE', 'CRIB'],
+  CHECKERBOARD: ['DECODE', 'CRIB'],
+  HOMOPHONIC:   ['DECODE', 'CRIB'],
+};
+
+const TYPE_LABELS = {
+  DECODE: 'Decode', CRIB: 'Crib', EXTRACT: 'Extract',
+  WORDS: 'Words', LETTERS: 'Letters',
+  RANDOM_LETTERS: 'Random Letters', SEQUENCE: 'Sequence',
+};
+
+// Key config UI for each cipher (practice-relevant fields only)
+function buildKeyConfig() {
+  const cipher = document.getElementById('f-cipher').value;
+  const typeVal = document.getElementById('f-type').value;
+  const wrap = document.getElementById('key-config-wrap');
+  wrap.innerHTML = '';
+
+  const MONO = ['ARISTOCRAT','PATRISTOCRAT','XENOCRYPT'];
+  if (MONO.includes(cipher)) {
+    wrap.innerHTML = `
+      <div class="gen-row">
+        <label>Alph Type
+          <select id="kc-alph">
+            <option value="">Random</option>
+            <option value="K1">K1</option>
+            <option value="K2">K2</option>
+            <option value="K3">K3</option>
+          </select>
+        </label>
+        <label>Hint Type
+          <select id="kc-hint-type">
+            <option value="None">None</option>
+            <option value="Word">Word</option>
+            <option value="Letters">Letters</option>
+            <option value="Subject">Subject</option>
+          </select>
+        </label>
+        <label class="span2">Hint Text (leave blank = no hint)
+          <input id="kc-hint" type="text" placeholder="e.g. L=E or about science">
+        </label>
+      </div>`;
+    return;
+  }
+
+  if (cipher === 'BACONIAN') {
+    const needsAB = !['WORDS'].includes(typeVal);
+    wrap.innerHTML = `
+      <div class="gen-row">
+        ${needsAB ? `
+        <label>A-letters (blank=random)
+          <input id="kc-key1" type="text" placeholder="e.g. AEIOU">
+        </label>
+        <label>B-letters (blank=random)
+          <input id="kc-key2" type="text" placeholder="e.g. BCDF">
+        </label>` : '<div></div><div></div>'}
+        <label class="span2">Hint (optional)
+          <input id="kc-hint" type="text" placeholder="">
+        </label>
+      </div>`;
+    return;
+  }
+
+  if (cipher === 'CAESAR') {
+    wrap.innerHTML = `
+      <div class="gen-row">
+        <label>Shift (blank=random 1-25)
+          <input id="kc-key1" type="number" min="1" max="25" placeholder="random">
+        </label>
+      </div>`;
+    return;
+  }
+
+  if (cipher === 'ATBASH') {
+    wrap.innerHTML = `
+      <div class="gen-row">
+        <label>Block size (blank=5)
+          <input id="kc-key3" type="number" value="5" min="1" max="10">
+        </label>
+      </div>`;
+    return;
+  }
+
+  if (cipher === 'COLUMNAR') {
+    wrap.innerHTML = `
+      <div class="gen-row">
+        <label>Columns (blank=random 3-6)
+          <input id="kc-key1" type="number" min="3" max="8" placeholder="random">
+        </label>
+        <label>Crib word (optional)
+          <input id="kc-key2" type="text" placeholder="auto from quote">
+        </label>
+      </div>`;
+    return;
+  }
+
+  if (cipher === 'FRACMORSE') {
+    wrap.innerHTML = `
+      <div class="gen-row">
+        <label>Keyword (blank=random)
+          <input id="kc-key1" type="text" placeholder="random">
+        </label>
+        <label>Crib type
+          <select id="kc-hint-type">
+            <option value="None">None</option>
+            <option value="Start Crib">Start Crib</option>
+            <option value="Middle Crib">Middle Crib</option>
+            <option value="End Crib">End Crib</option>
+          </select>
+        </label>
+      </div>`;
+    return;
+  }
+
+  if (cipher === 'NIHILIST') {
+    wrap.innerHTML = `
+      <div class="gen-row">
+        <label>Keyword (blank=random)
+          <input id="kc-key1" type="text" placeholder="random">
+        </label>
+        <label>Polybius key (blank=random)
+          <input id="kc-key2" type="text" placeholder="random">
+        </label>
+        <label>Block size (blank=5)
+          <input id="kc-key3" type="number" value="5" min="0" max="10">
+        </label>
+        ${typeVal === 'CRIB' ? `<label>Crib (blank=auto)
+          <input id="kc-key4" type="text" placeholder="auto">
+        </label>` : '<div></div>'}
+      </div>`;
+    return;
+  }
+
+  if (cipher === 'PORTA') {
+    wrap.innerHTML = `
+      <div class="gen-row">
+        <label>Keyword (blank=random)
+          <input id="kc-key1" type="text" placeholder="random">
+        </label>
+        <label>Block size (blank=5)
+          <input id="kc-key3" type="number" value="5" min="0" max="10">
+        </label>
+        ${typeVal === 'CRIB' ? `<label>Crib (blank=auto)
+          <input id="kc-key4" type="text" placeholder="auto">
+        </label>` : '<div></div>'}
+      </div>`;
+    return;
+  }
+
+  if (cipher === 'CHECKERBOARD') {
+    wrap.innerHTML = `
+      <div class="gen-row">
+        <label>H-key (blank=random)
+          <input id="kc-key1" type="text" placeholder="random 5 letters">
+        </label>
+        <label>V-key (blank=random)
+          <input id="kc-key2" type="text" placeholder="random 5 letters">
+        </label>
+        <label>Polybius kw (blank=random)
+          <input id="kc-key3" type="text" placeholder="random">
+        </label>
+        <label>Block size (blank=5)
+          <input id="kc-key4" type="number" value="5" min="0" max="10">
+        </label>
+        ${typeVal === 'CRIB' ? `<label class="span4">Crib (blank=auto)
+          <input id="kc-hint" type="text" placeholder="auto">
+        </label>` : ''}
+      </div>`;
+    return;
+  }
+
+  if (cipher === 'HOMOPHONIC') {
+    wrap.innerHTML = `
+      <div class="gen-row">
+        <label>Keyword (blank=random, 4 letters)
+          <input id="kc-key1" type="text" maxlength="4" placeholder="random">
+        </label>
+        ${typeVal === 'CRIB' ? `<label>Crib (blank=auto)
+          <input id="kc-key4" type="text" placeholder="auto">
+        </label>` : ''}
+      </div>`;
+    return;
+  }
+
+  if (cipher === 'CRYPTARITHM') {
+    wrap.innerHTML = `
+      <div class="gen-row">
+        <label>Operation
+          <select id="kc-key3">
+            <option value="Addition">Addition</option>
+            <option value="Subtraction">Subtraction</option>
+            <option value="Multiplication">Multiplication</option>
+          </select>
+        </label>
+        <label class="span3" style="font-size:10px;color:#888;padding-top:14px;">
+          Note: Cryptarithm puzzles require manual problem text. After generating, edit each question manually via the question list.
+        </label>
+      </div>`;
+    return;
+  }
+
+  // Default: no extra config
+  wrap.innerHTML = '';
+}
+
+function onCipherChange() {
+  const cipher = document.getElementById('f-cipher').value;
+  const allowed = CIPHER_TYPES_MAP[cipher] || ['DECODE'];
+  const sel = document.getElementById('f-type');
+  const cur = sel.value;
+  sel.innerHTML = '';
+  allowed.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = TYPE_LABELS[v] || v;
+    sel.appendChild(opt);
+  });
+  if (allowed.includes(cur)) sel.value = cur;
+  buildKeyConfig();
+}
+
+function onTypeChange() {
+  buildKeyConfig();
+}
+
+// ── Queue management ───────────────────────────────────────────────────────────
+
+function getKcField(id) {
+  const el = document.getElementById(id);
+  if (!el) return '';
+  return el.value ? el.value.trim() : '';
+}
+
+function addToQueue() {
+  const cipher = document.getElementById('f-cipher').value;
+  const typeVal = document.getElementById('f-type').value;
+  const count = parseInt(document.getElementById('f-count').value) || 1;
+
+  const keyConfig = {
+    alph:       getKcField('kc-alph'),
+    hint_type:  getKcField('kc-hint-type'),
+    hint:       getKcField('kc-hint'),
+    key1:       getKcField('kc-key1'),
+    key2:       getKcField('kc-key2'),
+    key3:       getKcField('kc-key3'),
+    key4:       getKcField('kc-key4'),
+  };
+
+  queueEntries.push({ cipher, type: typeVal, count, keyConfig });
+  renderQueue();
+}
+
+function removeFromQueue(idx) {
+  queueEntries.splice(idx, 1);
+  renderQueue();
+}
+
+function clearQueue() {
+  queueEntries = [];
+  renderQueue();
+}
+
+function renderQueue() {
+  const container = document.getElementById('cipher-queue');
+  const empty = document.getElementById('queue-empty');
+  const totalEl = document.getElementById('total-count');
+  if (!queueEntries.length) {
+    container.innerHTML = '';
+    container.appendChild(empty || (() => {
+      const d = document.createElement('div');
+      d.id = 'queue-empty';
+      d.style.cssText = 'color:#888;font-size:11px;padding:4px 0;';
+      d.textContent = 'No ciphers queued yet. Add some above.';
+      return d;
+    })());
+    totalEl.textContent = '';
+    return;
+  }
+  let total = 0;
+  container.innerHTML = '';
+  queueEntries.forEach((e, i) => {
+    total += e.count;
+    const div = document.createElement('div');
+    div.className = 'cipher-entry';
+    const typeLabel = TYPE_LABELS[e.type] || e.type;
+    const extras = [];
+    if (e.keyConfig.alph) extras.push(e.keyConfig.alph);
+    if (e.keyConfig.hint_type && e.keyConfig.hint_type !== 'None') extras.push(e.keyConfig.hint_type);
+    if (e.keyConfig.key1) extras.push('kw:' + e.keyConfig.key1);
+    const extraStr = extras.length ? ` [${extras.join(', ')}]` : '';
+    div.innerHTML = `
+      <span class="ce-count">${e.count}x</span>
+      <span class="ce-label"><b>${e.cipher}</b> ${typeLabel}${extraStr}</span>
+      <span class="ce-del" onclick="removeFromQueue(${i})">×</span>`;
+    container.appendChild(div);
+  });
+  totalEl.textContent = `(${total} total questions)`;
+}
+
+// ── Quote source ───────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('f-quote-source').addEventListener('change', function() {
+    document.getElementById('manual-quotes-wrap').style.display =
+      this.value === 'manual' ? 'block' : 'none';
+  });
+});
+
+// ── Generation ─────────────────────────────────────────────────────────────────
+
+async function generateAll() {
+  document.getElementById('form-error').textContent = '';
+  if (!queueEntries.length) {
+    document.getElementById('form-error').textContent = 'Add at least one cipher to the queue first.';
+    return;
+  }
+
+  const totalToGen = queueEntries.reduce((s, e) => s + e.count, 0);
+  const quoteSource = document.getElementById('f-quote-source').value;
+  let manualPlaintexts = [];
+  if (quoteSource === 'manual') {
+    const raw = document.getElementById('f-manual-quotes').value;
+    manualPlaintexts = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!manualPlaintexts.length) {
+      document.getElementById('form-error').textContent = 'Enter at least one plaintext for manual mode.';
+      return;
+    }
+  }
+
+  const btn = document.getElementById('generate-btn');
+  btn.disabled = true; btn.textContent = 'Generating...';
+  document.getElementById('progress-bar-wrap').style.display = 'block';
+  document.getElementById('progress-bar').style.width = '0%';
+
+  // Fetch available quotes and homophonic keywords from server
+  let quotes = [];
+  let homoKws = [];
+  try {
+    const r = await fetch('/api/practice/quotes');
+    if (r.ok) quotes = await r.json();
+  } catch(e) {}
+  try {
+    const r = await fetch('/api/practice/homokw');
+    if (r.ok) homoKws = await r.json();
+  } catch(e) {}
+  if (!homoKws.length) homoKws = ['KEYS','WORD','LOCK','CODE','ZONE','FLUX','MIND','WAVE'];
+  if (!quotes.length) {
+    quotes = [
+      "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+      "TO BE OR NOT TO BE THAT IS THE QUESTION",
+      "ALL THAT GLITTERS IS NOT GOLD",
+      "THE ONLY THING WE HAVE TO FEAR IS FEAR ITSELF",
+      "IN THE BEGINNING GOD CREATED THE HEAVENS AND THE EARTH",
+      "FOUR SCORE AND SEVEN YEARS AGO OUR FATHERS BROUGHT FORTH ON THIS CONTINENT",
+      "ASK NOT WHAT YOUR COUNTRY CAN DO FOR YOU",
+      "WE SHALL FIGHT ON THE BEACHES",
+      "IT WAS THE BEST OF TIMES IT WAS THE WORST OF TIMES",
+      "CALL ME ISHMAEL",
+      "SCIENCE IS NOT ONLY COMPATIBLE WITH SPIRITUALITY IT IS A PROFOUND SOURCE OF SPIRITUALITY",
+      "THE UNIVERSE IS UNDER NO OBLIGATION TO MAKE SENSE TO YOU",
+      "IMAGINATION IS MORE IMPORTANT THAN KNOWLEDGE",
+      "THE ONLY WAY TO DO GREAT WORK IS TO LOVE WHAT YOU DO",
+      "MATHEMATICS IS THE LANGUAGE IN WHICH GOD HAS WRITTEN THE UNIVERSE",
+    ];
+  }
+
+
+  let generated = 0;
+  const quotePool = quoteSource === 'manual' ? manualPlaintexts : quotes;
+  let quoteIdx = 0;
+
+  // Build flat list of generation tasks
+  const tasks = [];
+  queueEntries.forEach(entry => {
+    for (let i = 0; i < entry.count; i++) {
+      tasks.push({ ...entry });
+    }
+  });
+
+  // Shuffle quote pool to avoid repeats in order
+  function letterCount(s) { return s.replace(/[^A-Za-z]/g, '').length; }
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function bestFit(min, max) {
+    const filtered = quotes.filter(q => letterCount(q) >= min && letterCount(q) <= max);
+    if (filtered.length) return shuffle(filtered);
+    const mid = (min + max) / 2;
+    return shuffle([...quotes].sort((a, b) => Math.abs(letterCount(a) - mid) - Math.abs(letterCount(b) - mid)));
+  }
+
+  const CIPHER_POOLS = {
+    ARISTOCRAT:   bestFit(60, 130),
+    PATRISTOCRAT: bestFit(75, 130),
+    XENOCRYPT:    bestFit(70, 120),
+    CHECKERBOARD: bestFit(35, 65),
+    NIHILIST:     bestFit(35, 65),
+    HOMOPHONIC:   bestFit(35, 65),
+    COLUMNAR:     bestFit(40, 105),
+    ATBASH:       bestFit(50, 100),
+    CAESAR:       bestFit(50, 100),
+    BACONIAN:     bestFit(35, 50),
+    PORTA:        bestFit(36, 65),
+    FRACMORSE:    bestFit(28, 55),
+  };
+  const DEFAULT_POOL = shuffle(quotes);
+  const poolIdxs = {};
+
+  for (const task of tasks) {
+    const pool = CIPHER_POOLS[task.cipher] || DEFAULT_POOL;
+    if (poolIdxs[task.cipher] === undefined) poolIdxs[task.cipher] = 0;
+    const pt = pool[poolIdxs[task.cipher]++ % pool.length];
+
+    const payload = buildPayloadFromTask(task, pt, homoKws);
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!data.success) {
+        console.warn('Failed to generate:', data.error, payload);
+        // Skip failed ones but keep going
+      } else {
+        questions.push({
+          latex: data.latex,
+          cipher: payload.cipher,
+          plaintext: pt,
+          label: payload.cipher + ' [' + payload.value + 'pt]',
+          bonus: false,
+          answer: data.answer,
+          answer_bold: data.answer_bold,
+          keyword: data.keyword || null,
+          payload: payload,
+          qtext: '',
+        });
+      }
+    } catch(e) {
+      console.warn('Network error on question:', e);
+    }
+
+    generated++;
+    const pct = Math.round(generated / totalToGen * 100);
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-label').textContent = `Generated ${generated} / ${totalToGen}...`;
+  }
+
+  renderList();
+  setStatus('Generated ' + questions.length + ' questions. Click Refresh Preview.');
+  scheduleSave();
+  refreshPreview();
+
+  btn.disabled = false; btn.textContent = 'Generate Practice Test';
+  document.getElementById('progress-label').textContent = 'Done!';
+  setTimeout(() => {
+    document.getElementById('progress-bar-wrap').style.display = 'none';
+    document.getElementById('progress-label').textContent = '';
+  }, 2000);
+}
+
+function buildPayloadFromTask(task, pt, homoKws = []) {
+  const cipher = task.cipher;
+  const typeVal = task.type;
+  const kc = task.keyConfig || {};
+
+  // Points placeholder: 250 for now
+  // TODO: auto-calculate points based on cipher difficulty
+  const value = 250;
+
+  let key1 = kc.key1 || '';
+  let key2 = kc.key2 || '';
+  let key3 = kc.key3 || '';
+  let key4 = kc.key4 || '';
+  const hint_type = kc.hint_type || 'None';
+  const hint = kc.hint || '';
+  const alph = kc.alph || '';
+
+  const MONO = ['ARISTOCRAT','PATRISTOCRAT','XENOCRYPT'];
+
+  if (MONO.includes(cipher)) {
+    // For monoalphs, key3=alph type, key1=keyword (random), key2=shift
+    // If alph is blank, random derangement; otherwise use the selected type
+    return {
+      cipher, plaintext: pt, value, type: typeVal, bonus: false,
+      key1: key1 || '',   // keyword: blank = random
+      key2: key2 || '0',  // shift
+      key3: alph,         // alph type
+      key4: '', hint_type, hint,
+    };
+  }
+
+  if (cipher === 'CAESAR') {
+    const shift = key1 ? parseInt(key1) : (Math.floor(Math.random() * 25) + 1);
+    return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
+             key1: String(shift), key2:'', key3:'', key4:'', hint_type:'None', hint:'' };
+  }
+
+  if (cipher === 'ATBASH') {
+    return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
+             key1:'', key2:'', key3: key3 || '5', key4:'', hint_type:'None', hint:'' };
+  }
+
+  if (cipher === 'COLUMNAR') {
+    const cols = key1 ? key1 : String(Math.floor(Math.random() * 4) + 3);
+    // Auto-crib: first word of plaintext
+    const autoCrib = key2 || autoPickCribMin4(pt);
+    return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
+             key1: cols, key2: autoCrib, key3:'', key4:'', hint_type:'None', hint:'' };
+  }
+
+  if (cipher === 'BACONIAN') {
+    // Generate random A/B letters if not specified
+    const a = key1 || randomBaconLetters('A');
+    const b = key2 || randomBaconLetters('B', a);
+    return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
+             key1: a, key2: b, key3:'', key4:'', hint_type, hint };
+  }
+
+  if (cipher === 'FRACMORSE') {
+    const kw = key1 || randomKeyword(5, 8);
+    const autoCrib = autoPickCribMin4(pt);
+    const htype = hint_type || 'None';
+    return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
+             key1: kw, key2: autoCrib, key3:'', key4:'', hint_type: htype, hint:'' };
+  }
+
+  if (cipher === 'NIHILIST') {
+    const kw  = key1 || randomKeyword(4, 7);
+    const pk  = key2 || randomKeyword(5, 8);
+    const bs  = key3 !== '' ? key3 : '5';
+    const crib = (typeVal === 'CRIB') ? (key4 || autoPickCribMin4(pt)) : '';
+    return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
+             key1: kw, key2: pk, key3: bs, key4: crib, hint_type:'None', hint:'' };
+  }
+
+  if (cipher === 'PORTA') {
+    const kw = key1 || randomKeyword(4, 7);
+    const bs = key3 !== '' ? key3 : '5';
+    const crib = (typeVal === 'CRIB') ? (key4 || autoPickCribMin4(pt)) : '';
+    return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
+             key1: kw, key2:'', key3: bs, key4: crib, hint_type:'None', hint:'' };
+  }
+
+  if (cipher === 'CHECKERBOARD') {
+    const hkey = key1 || randomUniq5();
+    const vkey = key2 || randomUniq5();
+    const pk3  = key3 || randomKeyword(4, 7);
+    const bs   = key4 !== '' ? key4 : '5';
+    const crib = (typeVal === 'CRIB') ? (hint || autoPickCribMin4(pt)) : '';
+    return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
+             key1: hkey, key2: vkey, key3: pk3, key4: bs, hint_type:'None', hint: crib };
+  }
+
+  if (cipher === 'HOMOPHONIC') {
+    let kw;
+    if (key1 && key1.length === 4) {
+      kw = key1;
+    } else if (homoKws.length) {
+      kw = homoKws[Math.floor(Math.random() * homoKws.length)];
+    } else {
+      kw = randomKeyword(4, 4);
+    }
+    const crib = (typeVal === 'CRIB') ? (key4 || autoPickCribMin4(pt)) : '';
+    return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
+             key1: kw, key2:'', key3:'', key4: crib, hint_type: hint_type || 'None', hint };
+  }
+
+  if (cipher === 'CRYPTARITHM') {
+    // Cryptarithm needs manual problem text — generate placeholder
+    return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
+             key1: '  WORD\n+ WORD2\n------\nRESULT', key2:'12345 67890',
+             key3: key3 || 'Addition', key4:'', hint_type:'None', hint:'' };
+  }
+
+  return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
+           key1, key2, key3, key4, hint_type, hint };
+}
+
+// ── Random helpers ─────────────────────────────────────────────────────────────
+
+const COMMON_WORDS = ['SCIENCE','NATURE','WORLD','LIGHT','POWER','DREAM','FORCE','STONE','WATER','EARTH',
+  'PLANET','SYSTEM','ENERGY','MOTION','THEORY','MATTER','SIGNAL','CIPHER','SECRET','HIDDEN',
+  'BRIDGE','CASTLE','GARDEN','WINDOW','MIRROR','FOREST','STREAM','DESERT','ISLAND','VALLEY'];
+
+function randomKeyword(minLen, maxLen) {
+  const candidates = COMMON_WORDS.filter(w => w.length >= minLen && w.length <= maxLen);
+  if (!candidates.length) return 'KEYWORD';
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function randomUniq5() {
+  const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const shuffled = alpha.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 5).join('');
+}
+
+function randomBaconLetters(role, existing) {
+  if (role === 'A') {
+    // Return vowels as A-letters
+    return 'AEIOU';
+  }
+  return 'BCDFGHJKLMNPQRSTVWXYZ';
+}
+
+function autoPickCrib(pt) {
+  const words = pt.replace(/[^A-Za-z ]/g,'').toUpperCase().split(' ').filter(Boolean);
+  if (!words.length) return '';
+  const idx = Math.floor(words.length / 3);
+  return words[idx] || words[0];
+}
+
+function autoPickCribMin4(pt) {
+  const words = pt.replace(/[^A-Za-z ]/g,'').toUpperCase().split(' ').filter(w => w.length >= 4);
+  if (!words.length) return autoPickCrib(pt); // fallback if no 4+ letter words
+  const idx = Math.floor(words.length / 3);
+  return words[idx] || words[0];
+}
+
+// ── Question list ─────────────────────────────────────────────────────────────
+
+function renderList() {
+  const list = document.getElementById('question-list');
+  list.innerHTML = '';
+  questions.forEach((q, i) => {
+    const row = document.createElement('div');
+    row.className = 'q-row';
+    row.draggable = true;
+    row.dataset.idx = i;
+    row.innerHTML = `<span class="q-num">${i+1}.</span>
+      <div class="q-info">
+        <div class="q-title">${escHtml(q.label)}</div>
+        <div class="q-sub">${escHtml(q.plaintext)}</div>
+      </div>
+      <span class="q-del" onclick="deleteQuestion(${i})">×</span>`;
+    row.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', i); row.classList.add('dragging'); });
+    row.addEventListener('dragend', () => row.classList.remove('dragging'));
+    row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault(); row.classList.remove('drag-over');
+      const from = parseInt(e.dataTransfer.getData('text/plain'));
+      const to = parseInt(row.dataset.idx);
+      if (from === to) return;
+      const moved = questions.splice(from, 1)[0];
+      questions.splice(to, 0, moved);
+      renderList(); scheduleSave();
+      setStatus('Reordered. Click Refresh Preview to update.');
+    });
+    list.appendChild(row);
+  });
+  document.getElementById('list-count').textContent = questions.length + ' question' + (questions.length !== 1 ? 's' : '');
+}
+
+function deleteQuestion(i) {
+  questions.splice(i, 1);
+  renderList(); scheduleSave();
+  setStatus('Question deleted. Click Refresh Preview to update.');
+}
+
+function randomizeOrder() {
+  for (let i = questions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [questions[i], questions[j]] = [questions[j], questions[i]];
+  }
+  renderList(); scheduleSave();
+  setStatus('Randomized order. Click Refresh Preview to update.');
+}
+
+// ── Preview / Download ────────────────────────────────────────────────────────
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-test').className = 'tab' + (tab==='test' ? ' active' : '');
+  document.getElementById('tab-key').className  = 'tab' + (tab==='key'  ? ' active' : '');
+  refreshPreview();
+}
+
+function setStatus(msg) { document.getElementById('preview-status').textContent = msg; }
+
+function getPracticeSettings() {
+  return {
+    tournament: 'Practice Test',
+    division: '',
+    compdate: new Date().toLocaleDateString('en-US'),
+    tqvalue: '250',
+    tqphrase: 'raise your hand',
+    tqcipher: '',
+    writers: '',
+    bonus_nums: '',
+    cover_image: '',
+    is_practice: true,
+  };
+}
+
+async function refreshPreview() {
+  if (!questions.length) {
+    setStatus('No questions yet.');
+    document.getElementById('preview-frame').style.display = 'none';
+    document.getElementById('preview-placeholder').style.display = 'flex';
+    document.getElementById('preview-placeholder').textContent = 'Generate questions, then click Refresh Preview.';
+    return;
+  }
+  setStatus('Compiling PDF...');
+  document.getElementById('preview-frame').style.display = 'none';
+  document.getElementById('preview-placeholder').style.display = 'flex';
+  document.getElementById('preview-placeholder').textContent = 'Compiling PDF...';
+  try {
+    const res = await fetch('/api/practice/preview', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ questions, is_key: activeTab === 'key' })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setStatus('Error: ' + (err.error || 'compile failed'));
+      document.getElementById('preview-placeholder').textContent = 'Compile error.';
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const frame = document.getElementById('preview-frame');
+    frame.src = url + '#toolbar=1&navpanes=0';
+    frame.style.display = 'block';
+    document.getElementById('preview-placeholder').style.display = 'none';
+    setStatus('Showing ' + (activeTab === 'key' ? 'answer key' : 'test') + ' — ' + questions.length + ' question(s)');
+  } catch(e) {
+    setStatus('Network error: ' + e.message);
+  }
+}
+
+async function downloadPDF(isKey) {
+  if (!questions.length) { alert('Generate questions first.'); return; }
+  setStatus('Preparing download...');
+  const testName = document.getElementById('test-title').textContent.replace(' [PRACTICE]', '').trim();
+  const res = await fetch('/api/practice/download', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ questions, is_key: isKey, test_name: testName })
+  });
+  if (!res.ok) { setStatus('Download failed.'); return; }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = isKey ? testName + ' KEY.pdf' : testName + ' TEST.pdf';
+  a.click(); URL.revokeObjectURL(url);
+  setStatus('Downloaded.');
+}
+
+// ── Save / Load ───────────────────────────────────────────────────────────────
+
+async function autosave() {
+  if (!currentTestId) return;
+  document.getElementById('save-status').textContent = 'Saving...';
+  try {
+    await fetch('/api/tests/' + currentTestId, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ settings: getPracticeSettings(), questions })
+    });
+    document.getElementById('save-status').textContent = 'Saved';
+    setTimeout(() => document.getElementById('save-status').textContent = '', 2000);
+  } catch(e) {
+    document.getElementById('save-status').textContent = 'Save failed';
+  }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(autosave, 1200);
+}
+
+async function loadTestData() {
+  if (!currentTestId) return;
+  const res = await fetch('/api/tests/' + currentTestId);
+  if (res.status === 401) { window.location.href = '/'; return; }
+  const t = await res.json();
+  if (t.error) { setStatus('Error loading test: ' + t.error); return; }
+  document.getElementById('test-title').textContent = t.name + ' [PRACTICE]';
+  questions = t.questions || [];
+  renderList();
+  if (questions.length > 0) setStatus('Test loaded. Click Refresh Preview to view.');
+}
+
+function goHome() { window.location.href = '/'; }
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+buildKeyConfig();
+onCipherChange();
+loadTestData();
+
+</script>
+</body>
+</html>

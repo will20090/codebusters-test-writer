@@ -103,7 +103,9 @@ h3 { font-size: 13px; margin-bottom: 10px; color: #555; }
     <div id="dash-header">
       <h2 id="dash-title">My Tests</h2>
       <div id="dash-actions">
+        <!-- Replace the single New Test button with two -->
         <button onclick="openNewTestModal()">+ New Test</button>
+        <button onclick="openPracticeModal()">Generate Practice Test</button>
         <button class="secondary" onclick="doLogout()">← Log Out</button>
       </div>
     </div>
@@ -254,6 +256,7 @@ async function showDashboard(username) {
 
 async function loadTests() {
   const res = await fetch('/api/tests');
+  
   if (!res.ok) { showAuthScreen(); return; }
   const tests = await res.json();
   const list = document.getElementById('test-list');
@@ -267,11 +270,11 @@ async function loadTests() {
     row.className = 'test-card';
     row.innerHTML = `
       <div class="tc-info" style="flex:1">
-        <div class="tc-name" onclick="openTest('${t.id}')">${esc(t.name)}</div>
+        <div class="tc-name" onclick="openTest('${t.id}', ${!!t.is_practice})">${esc(t.name)}</div>
         <div class="tc-meta">${t.count} question${t.count!==1?'s':''} · last modified ${mod||'never'}</div>
       </div>
       <div class="tc-actions">
-        <button onclick="openTest('${t.id}')">Open</button>
+        <button onclick="openTest('${t.id}', ${!!t.is_practice})">Open</button>
         ${t.owned ? '<button onclick="renameTest(\''+t.id+'\',\''+esc(t.name)+'\')">Rename</button>' : ''}
         ${t.owned ? '<button onclick="openShareModal(\''+t.id+'\')">Share</button>' : '<span style="font-size:11px;color:#888;padding:3px 6px;">Shared with you</span>'}
         ${t.owned ? '<button class="del-btn" onclick="deleteTest(\''+t.id+'\',\''+esc(t.name)+'\')">Delete</button>' : ''}
@@ -281,9 +284,16 @@ async function loadTests() {
   });
 }
 
-function openTest(tid) {
-  sessionStorage.setItem('testId', tid);
-  window.location.href = window.location.protocol + '//' + window.location.host + '/builder';
+function openTest(tid, isPractice) {
+  if (isPractice) {
+    sessionStorage.setItem('practiceTestId', tid);
+    sessionStorage.removeItem('testId');
+    window.location.href = '/practice';
+  } else {
+    sessionStorage.setItem('testId', tid);
+    sessionStorage.removeItem('practiceTestId');
+    window.location.href = '/builder';
+  }
 }
 
 async function deleteTest(tid, name) {
@@ -328,6 +338,18 @@ async function confirmNewTest() {
   openTest(t.id);
 }
 
+async function openPracticeModal() {
+  const name = prompt('Name your practice test:', '2026 Practice Test');
+  if (!name || !name.trim()) return;
+  const res = await fetch('/api/tests', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name.trim(), is_practice: true})
+  });
+  const t = await res.json();
+  if (t.error) { alert(t.error); return; }
+  sessionStorage.setItem('practiceTestId', t.id);
+  window.location.href = '/practice';
+}
 
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
