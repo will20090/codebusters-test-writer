@@ -378,7 +378,11 @@ def fractionatedFormatter(s, keyword, crib, value, hint_type, hint, bonus):
     s = re.sub(r"[^\w\s]","",s).upper()
     encoded, stream = frac_encode(s, keyword.replace(" ",""))
 
-    display = "  " + "  ".join(encoded)
+    # Group encoded into lines of ~13 characters each, separated by newlines
+    chars = list(encoded)
+    chunks = [chars[i:i+13] for i in range(0, len(chars), 13)]
+    lines = ["  " + "  ".join(chunk) for chunk in chunks]
+    display = "\n\n\n".join(lines)
 
     bonus_text = " \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
 

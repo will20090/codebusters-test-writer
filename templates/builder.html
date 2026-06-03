@@ -821,13 +821,13 @@ function renderList() {
 }
 
 function startEdit(i) {
-  const NO_BONUS_SE = new Set(['ARISTOCRAT','PATRISTOCRAT','XENOCRYPT']);
-  document.getElementById('bonus-row').style.display = NO_BONUS_SE.has(cipher) ? 'none' : '';
   if (editingIndex === i) { cancelEdit(); return; }
   editingIndex = i;
   const q = questions[i];
   const p = q.payload || {};
   const cipher = p.cipher || q.cipher || 'ARISTOCRAT';
+  const NO_BONUS_SE = new Set(['ARISTOCRAT','PATRISTOCRAT','XENOCRYPT']);
+  document.getElementById('bonus-row').style.display = NO_BONUS_SE.has(cipher) ? 'none' : '';
 
   document.getElementById('f-cipher').value = cipher;
   buildKeyFields();
