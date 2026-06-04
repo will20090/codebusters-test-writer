@@ -43,19 +43,30 @@ def aristo_letter_replacement(s, keyword="", shift="", alph=""):
     if alph == "":
         alphabet_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         replacement_alphabet = rand_derange(alphabet_upper)
+    elif alph == "K1":
+        replacement_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        for try_shift in range(shift, shift + 26):
+            alphabet_upper = process_word(keyword, try_shift % 26).upper()
+            if all(alphabet_upper[i] != replacement_alphabet[i] for i in range(26)):
+                break
+        else:
+            alphabet_upper = rand_derange("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
     elif alph == "K2":
         alphabet_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        replacement_alphabet = process_word(keyword, shift).upper()
-    elif alph == "K1":
-        alphabet_upper = process_word(keyword, shift).upper()
-        replacement_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    else:
+        for try_shift in range(shift, shift + 26):
+            replacement_alphabet = process_word(keyword, try_shift % 26).upper()
+            if all(alphabet_upper[i] != replacement_alphabet[i] for i in range(26)):
+                break
+        else:
+            replacement_alphabet = rand_derange("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    elif alph == "K3":
         alphabet_upper = process_word(keyword, 0).upper()
-        replacement_alphabet = process_word(keyword, 26 - shift).upper()
-
-    for i in range(26):
-        if alphabet_upper[i] == replacement_alphabet[i]:
-            raise ValueError("Cannot have a letter map to itself; check your keys")
+        for try_shift in range(1, 26):
+            replacement_alphabet = process_word(keyword, try_shift).upper()
+            if all(alphabet_upper[i] != replacement_alphabet[i] for i in range(26)):
+                break
+        else:
+            replacement_alphabet = rand_derange("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
     return s.upper().translate(str.maketrans(alphabet_upper, replacement_alphabet))
 
 def aristo_format_sentence(s):
@@ -117,21 +128,20 @@ def monoalph_creator(s, value, ctype, hint_type, hint, alph="", keyword="", shif
         article = "an" if ctype == "Aristocrat" else "a"
         v = f"\\normalsize \\question[{value}] The following quote was encoded as {article} \\textbf{{{ctype}}} with a {alph_label}alphabet"
 
-    if hint_type == "None" or not hint_type:
-        v += ".\n"
-    elif hint_type in ("Word", "Letters"):
-        v += f". You are told that {hint}.\n"
-    elif hint_type in ("Word + Subject", "Letters + Subject"):
-        parts = hint.split(",", 1)
-        v += f" about {parts[1].strip()}. You are told that {parts[0].strip()}.\n"
-    elif hint_type == "Subject":
-        v += f" about {hint}.\n"
+    if not extract:
+        if hint_type == "None" or not hint_type:
+            v += ".\n"
+        elif hint_type in ("Word", "Letters"):
+            v += f". You are told that {hint}.\n"
+        elif hint_type in ("Word + Subject", "Letters + Subject"):
+            parts = hint.split(",", 1)
+            v += f" about {parts[1].strip()}. You are told that {parts[0].strip()}.\n"
+        elif hint_type == "Subject":
+            v += f" about {hint}.\n"
+        else:
+            v += ".\n"
     else:
-        v += ".\n"
-
-    if extract:
-        v += f"You are told that the keyword used is {len(keyword)} letters long. What is the keyword? $\\boxed{{\\text{{Box}}}}$ your final answer."
-
+        v += f". You are told that the keyword used is {len(keyword)} letters long. What is the keyword? $\\boxed{{\\text{{Box}}}}$ your final answer.\n"
     v += "\n\\Large{\n\\begin{verbatim}\n"
     v += formatted + "\n\\end{verbatim}}\n"
     v += mono_table()
@@ -707,8 +717,24 @@ def xeno_creator(s, value, xtype, hint_type, hint, alph="", keyword="", shift=""
         au=xeno_process_word(keyword,shift).upper(); ru="ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
     elif alph=="K3":
         au=xeno_process_word(keyword,0).upper(); ru=xeno_process_word(keyword,shift).upper()
-    for i in range(27):
-        if au[i]==ru[i]: raise ValueError("Cannot have a letter map to itself")
+    def xeno_derangement(lst):
+        while True:
+            r = lst[:]; random.shuffle(r)
+            if all(x != y for x, y in zip(lst, r)): return r
+
+    attempts = 0
+    while any(au[i] == ru[i] for i in range(27)):
+        attempts += 1
+        if attempts > 50:
+            ru = ''.join(xeno_derangement(list(au))); break
+        if alph == "":
+            ru = ''.join(derangement(list(au)))
+        elif alph == "K1":
+            au = xeno_process_word(keyword, attempts % 26).upper()
+        elif alph == "K2":
+            ru = xeno_process_word(keyword, attempts % 26).upper()
+        elif alph == "K3":
+            ru = xeno_process_word(keyword, attempts % 26).upper()
     replaced=s.upper().translate(str.maketrans(au,ru))
     formatted=aristo_format_sentence(replaced)
 

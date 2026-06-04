@@ -162,6 +162,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
         <div id="list-header">
           <span id="list-count">0 questions</span>
           <span style="display:flex;align-items:center;gap:8px;">
+            <button onclick="toggleAnswers()" id="answers-toggle-btn" style="background:#444;color:#eee;border:1px solid #666;padding:2px 8px;cursor:pointer;font-family:monospace;font-size:11px;">show answers</button>
             <button onclick="randomizeOrder()" style="background:#444;color:#eee;border:1px solid #666;padding:2px 8px;cursor:pointer;font-family:monospace;font-size:11px;">randomize order</button>
             <span>drag to reorder</span>
           </span>
@@ -195,7 +196,9 @@ let questions = [];
 let activeTab = 'test';
 let currentTestId = sessionStorage.getItem('practiceTestId') || null;
 let saveTimer = null;
-let queueEntries = []; // [{cipher, type, count, keyConfig}]
+let queueEntries = [];
+let pdfCache = { test: null, key: null };
+let previewDirty = false;
 
 // ── Cipher config definitions ─────────────────────────────────────────────────
 // For each cipher we expose only the params that matter for practice generation:
@@ -531,11 +534,16 @@ const totalToGen = queueEntries.reduce((s, e) => s + e.count, 0);
   // Fetch available quotes and homophonic keywords from server
   // Fetch available quotes and homophonic keywords from server
   let quotes = [];
-
+  let spanishQuotes = [];
   try {
     const r = await fetch('/api/practice/quotes');
     if (r.ok) quotes = await r.json();
   } catch(e) {}
+  try {
+    const r = await fetch('/api/practice/quotes/spanish');
+    if (r.ok) spanishQuotes = await r.json();
+  } catch(e) {}
+  if (!spanishQuotes.length) spanishQuotes = quotes;
   try {
     const r = await fetch('/api/practice/homokw');
     if (r.ok) homoKws = await r.json();
@@ -573,17 +581,18 @@ const totalToGen = queueEntries.reduce((s, e) => s + e.count, 0);
     }
     return a;
   }
-  function bestFit(min, max) {
-    const filtered = quotes.filter(q => letterCount(q) >= min && letterCount(q) <= max);
+  function bestFit(min, max, pool) {
+    pool = pool || quotes;
+    const filtered = pool.filter(q => letterCount(q) >= min && letterCount(q) <= max);
     if (filtered.length) return shuffle(filtered);
     const mid = (min + max) / 2;
-    return shuffle([...quotes].sort((a, b) => Math.abs(letterCount(a) - mid) - Math.abs(letterCount(b) - mid)));
+    return shuffle([...pool].sort((a, b) => Math.abs(letterCount(a) - mid) - Math.abs(letterCount(b) - mid)));
   }
 
   const CIPHER_POOLS = {
     ARISTOCRAT:   bestFit(60, 130),
     PATRISTOCRAT: bestFit(75, 130),
-    XENOCRYPT:    bestFit(70, 120),
+    XENOCRYPT:    bestFit(70, 120, spanishQuotes),
     CHECKERBOARD: bestFit(35, 65),
     NIHILIST:     bestFit(35, 65),
     HOMOPHONIC:   bestFit(35, 65),
@@ -638,6 +647,7 @@ const totalToGen = queueEntries.reduce((s, e) => s + e.count, 0);
     document.getElementById('progress-label').textContent = `Generated ${generated} / ${totalToGen}...`;
   }
 
+  previewDirty = true; pdfCache = { test: null, key: null };
   renderList();
   setStatus('Generated ' + questions.length + ' questions. Click Refresh Preview.');
   scheduleSave();
@@ -818,6 +828,14 @@ function autoPickCribMin4(pt) {
 
 // ── Question list ─────────────────────────────────────────────────────────────
 
+let showAnswers = false;
+
+function toggleAnswers() {
+  showAnswers = !showAnswers;
+  document.getElementById('answers-toggle-btn').textContent = showAnswers ? 'hide answers' : 'show answers';
+  renderList();
+}
+
 function renderList() {
   const list = document.getElementById('question-list');
   list.innerHTML = '';
@@ -829,7 +847,7 @@ function renderList() {
     row.innerHTML = `<span class="q-num">${i+1}.</span>
       <div class="q-info">
         <div class="q-title">${escHtml(q.label)}</div>
-        <div class="q-sub">${escHtml(q.plaintext)}</div>
+        ${showAnswers ? `<div class="q-sub">${escHtml(q.plaintext)}</div>` : ''}
       </div>
       <span class="q-del" onclick="deleteQuestion(${i})">×</span>`;
     row.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', i); row.classList.add('dragging'); });
@@ -855,6 +873,7 @@ function deleteQuestion(i) {
   questions.splice(i, 1);
   renderList(); scheduleSave();
   setStatus('Question deleted. Click Refresh Preview to update.');
+  refreshPreview();
 }
 
 function randomizeOrder() {
@@ -864,6 +883,7 @@ function randomizeOrder() {
   }
   renderList(); scheduleSave();
   setStatus('Randomized order. Click Refresh Preview to update.');
+  refreshPreview();
 }
 
 // ── Preview / Download ────────────────────────────────────────────────────────
@@ -872,7 +892,16 @@ function switchTab(tab) {
   activeTab = tab;
   document.getElementById('tab-test').className = 'tab' + (tab==='test' ? ' active' : '');
   document.getElementById('tab-key').className  = 'tab' + (tab==='key'  ? ' active' : '');
-  refreshPreview();
+  const cached = pdfCache[tab];
+  if (cached && !previewDirty) {
+    const frame = document.getElementById('preview-frame');
+    frame.src = cached + '#toolbar=1&navpanes=0';
+    frame.style.display = 'block';
+    document.getElementById('preview-placeholder').style.display = 'none';
+    setStatus('Showing ' + (tab === 'key' ? 'answer key' : 'test') + ' — ' + questions.length + ' question(s)');
+  } else {
+    refreshPreview();
+  }
 }
 
 function setStatus(msg) { document.getElementById('preview-status').textContent = msg; }
@@ -917,12 +946,15 @@ async function refreshPreview() {
       return;
     }
     const blob = await res.blob();
+    if (pdfCache[activeTab]) URL.revokeObjectURL(pdfCache[activeTab]);
     const url = URL.createObjectURL(blob);
+    pdfCache[activeTab] = url;
     const frame = document.getElementById('preview-frame');
     frame.src = url + '#toolbar=1&navpanes=0';
     frame.style.display = 'block';
     document.getElementById('preview-placeholder').style.display = 'none';
     setStatus('Showing ' + (activeTab === 'key' ? 'answer key' : 'test') + ' — ' + questions.length + ' question(s)');
+    previewDirty = false;
   } catch(e) {
     setStatus('Network error: ' + e.message);
   }

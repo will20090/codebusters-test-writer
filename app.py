@@ -539,7 +539,7 @@ def build_latex(settings, questions_data, is_key=False):
     if is_key:
         cover = rf"""
 \begin{{center}}
-{{\Large \textbf{{Codebusters {division} KEY}}}} \\[0.4em]
+{{\Large \textcolor{{red}}{{\textbf{{Codebusters {division} KEY}}}}}} \\[0.4em]
 {{\large {tournament}}} \\[0.2em]
 {compdate_line}
 {img_latex}
@@ -826,7 +826,7 @@ Replacement&&&&&&&&&&&&&&&&&&&&&&&&&&\\
 \usepackage{{bm}}
 \usepackage{{enumitem}}
 \usepackage{{mdframed}}
-\usepackage{{needspace}}
+\usepackage{{needspace}}  
 
 
 {col_type}
@@ -958,6 +958,18 @@ def get_keywords():
     with open(path, encoding='utf-8') as f:
         lines = [l.strip().upper() for l in f if l.strip()]
     return jsonify(lines)
+
+@app.route('/api/practice/quotes/spanish', methods=['GET'])
+def get_spanish_quotes():
+    err = require_login()
+    if err: return err
+    path = os.path.join(BASE, 'quotesSpanish.txt')
+    if not os.path.exists(path):
+        return jsonify([])
+    with open(path, encoding='utf-8') as f:
+        data = json.load(f)
+    quotes = [q['Cita'].strip('"').strip() for q in data.get('quotes', []) if q.get('Cita')]
+    return jsonify([q.upper() for q in quotes if q.strip()])
 
 @app.route('/api/practice/quotes', methods=['GET'])
 def get_quotes():
