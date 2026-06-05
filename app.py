@@ -462,7 +462,11 @@ def dispatch(row):
             return ciphers.checkerboardcrib(pt, key1, key2, key3, hint, bs_val, value, bonus)
     elif cipher == 'HOMOPHONIC':
         crib_val = key4 if rtype == 'CRIB' else ''
-        return ciphers.homophonic_formatter(pt, key1, value, hint_type, hint, crib_val, bonus)
+        kw_letters_given = row.get('kw_letters_given', '')
+        kw_difficulty    = row.get('kw_difficulty', 'Easy')
+        return ciphers.homophonic_formatter(pt, key1, value, hint_type, hint, crib_val, bonus,
+                                            kw_letters_given=kw_letters_given,
+                                            kw_difficulty=kw_difficulty)
     else:
         raise ValueError(f"Unknown cipher: {cipher}")
 

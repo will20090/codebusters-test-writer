@@ -953,8 +953,8 @@ def checkerboardcrib(s, hkey, vkey, pk, crib, bs, value, bonus):
 
 # ── Homophonic ────────────────────────────────────────────────────────────────
 
-def homophonic_formatter(s, keyword, value, hint_type, hint, crib, bonus):
-
+def homophonic_formatter(s, keyword, value, hint_type, hint, crib, bonus,
+                         kw_letters_given='', kw_difficulty='Easy'):
     alph = 'ABCDEFGHIKLMNOPQRSTUVWXYZ'  # 25 letters, no J
     keyword = re.sub(r'[^A-Za-z]', '', keyword).upper().replace('J', 'I')[:4]
     if len(keyword) != 4:
@@ -1040,8 +1040,22 @@ def homophonic_formatter(s, keyword, value, hint_type, hint, crib, bonus):
             q = (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Homophonic}} cipher "
                  f"with a keyword of \\textbf{{{keyword}}}.{bonus_text}")
     else:
+        n = int(kw_letters_given) if kw_letters_given and kw_letters_given not in ('', '(default - full keyword)') else 4
+        if n >= 4:
+            kw_hint = f"with a keyword of \\textbf{{{keyword}}}"
+        elif kw_difficulty == 'Hard':
+            chosen = sorted(random.sample(list(keyword), n))
+            if n == 2:
+                letters_str = f"\\textbf{{{chosen[0]}}} and \\textbf{{{chosen[1]}}}"
+            else:
+                letters_str = f"\\textbf{{{chosen[0]}}}, \\textbf{{{chosen[1]}}}, and \\textbf{{{chosen[2]}}}"
+            kw_hint = f"and you are told that the keyword contains the letters {letters_str}"
+        else:
+            start = random.randint(0, len(keyword) - n)
+            substr = keyword[start:start + n]
+            kw_hint = f"and you are told that the keyword contains the string \\textbf{{{substr}}}"
         q = (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Homophonic}} cipher "
-             f"with a keyword of \\textbf{{{keyword}}}.{bonus_text}")
+             f"{kw_hint}.{bonus_text}")
     # Build the homophonic table for solvers
     # Shows all 4 rows with numbers, blank row for solver to fill plaintext
     ##rows = ['01-25', '26-50', '51-75', '76-00']

@@ -396,6 +396,20 @@ function buildKeyConfig() {
         ${typeVal === 'CRIB' ? `<label>Crib (blank=auto)
           <input id="kc-key4" type="text" placeholder="auto">
         </label>` : ''}
+        ${typeVal === 'DECODE' ? `<label>Letters given
+          <select id="kc-kw-letters-given">
+            <option value="">(default - full keyword)</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </label>
+        <label>Difficulty
+          <select id="kc-kw-difficulty">
+            <option value="Easy">Easy</option>
+            <option value="Hard">Hard</option>
+          </select>
+        </label>` : ''}
       </div>`;
     return;
   }
@@ -454,13 +468,15 @@ function addToQueue() {
   const count = parseInt(document.getElementById('f-count').value) || 1;
 
   const keyConfig = {
-    alph:       getKcField('kc-alph'),
-    hint_type:  getKcField('kc-hint-type'),
-    hint:       getKcField('kc-hint'),
-    key1:       getKcField('kc-key1'),
-    key2:       getKcField('kc-key2'),
-    key3:       getKcField('kc-key3'),
-    key4:       getKcField('kc-key4'),
+    alph:             getKcField('kc-alph'),
+    hint_type:        getKcField('kc-hint-type'),
+    hint:             getKcField('kc-hint'),
+    key1:             getKcField('kc-key1'),
+    key2:             getKcField('kc-key2'),
+    key3:             getKcField('kc-key3'),
+    key4:             getKcField('kc-key4'),
+    kw_letters_given: getKcField('kc-kw-letters-given'),
+    kw_difficulty:    getKcField('kc-kw-difficulty'),
   };
 
   queueEntries.push({ cipher, type: typeVal, count, keyConfig });
@@ -769,7 +785,9 @@ function buildPayloadFromTask(task, pt, homoKws = [], checkKws = []) {
     }
     const crib = (typeVal === 'CRIB') ? (key4 || autoPickCribMin4(pt)) : '';
     return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
-             key1: kw, key2:'', key3:'', key4: crib, hint_type: hint_type || 'None', hint };
+             key1: kw, key2:'', key3:'', key4: crib, hint_type: hint_type || 'None', hint,
+             kw_letters_given: kc.kw_letters_given || '',
+             kw_difficulty:    kc.kw_difficulty || 'Easy' };
   }
 
   if (cipher === 'CRYPTARITHM') {

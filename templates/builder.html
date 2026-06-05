@@ -362,7 +362,9 @@ const CIPHER_FIELDS = {
   HOMOPHONIC: [
   {id:'key1', label:'Keyword (max 4 letters)'},
   {id:'hint_type', label:'Hint type', type:'select', opts:['None','Word','Letters','Subject']},
-  {id:'hint', label:'Hint text'}
+  {id:'hint', label:'Hint text'},
+  {id:'kw_letters_given', label:'Letters given', type:'select', opts:['(default - full keyword)','2','3','4']},
+  {id:'kw_difficulty', label:'Difficulty', type:'select', opts:['Easy','Hard']},
   ],
 };
 
@@ -722,6 +724,8 @@ function buildPayload() {
     key4: key4Val,
     hint_type: getField('hint_type'),
     hint: hintVal,
+    kw_letters_given: getField('kw_letters_given') || '',
+    kw_difficulty: getField('kw_difficulty') || 'Easy',
   };
 }
 
