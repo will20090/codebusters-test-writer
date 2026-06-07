@@ -361,9 +361,10 @@ const CIPHER_FIELDS = {
   ],
   HOMOPHONIC: [
   {id:'key1', label:'Keyword (max 4 letters)'},
+  {id:'key3', label:'Block size (0 = word-spaced, blank = word-spaced)'},
   {id:'hint_type', label:'Hint type', type:'select', opts:['None','Word','Letters','Subject']},
   {id:'hint', label:'Hint text'},
-  {id:'kw_letters_given', label:'Letters given', type:'select', opts:['(default - full keyword)','2','3','4']},
+  {id:'kw_letters_given', label:'Letters given', type:'select', opts:['(full word (4)','2','3','4']},
   {id:'kw_difficulty', label:'Difficulty', type:'select', opts:['Easy','Hard']},
   ],
 };

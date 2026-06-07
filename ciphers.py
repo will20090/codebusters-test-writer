@@ -954,7 +954,7 @@ def checkerboardcrib(s, hkey, vkey, pk, crib, bs, value, bonus):
 # ── Homophonic ────────────────────────────────────────────────────────────────
 
 def homophonic_formatter(s, keyword, value, hint_type, hint, crib, bonus,
-                         kw_letters_given='', kw_difficulty='Easy'):
+                         kw_letters_given='', kw_difficulty='Easy', bs=''):
     alph = 'ABCDEFGHIKLMNOPQRSTUVWXYZ'  # 25 letters, no J
     keyword = re.sub(r'[^A-Za-z]', '', keyword).upper().replace('J', 'I')[:4]
     if len(keyword) != 4:
@@ -980,32 +980,46 @@ def homophonic_formatter(s, keyword, value, hint_type, hint, crib, bonus,
     encoded = [random.choice(table[c]) for c in s_clean]
     random.seed()
 
-    # Format output — preserve original word spacing and punctuation
-    lines = []; line = ""; length = 0; idx = 0
-    tokens = []
-    for ch in s.upper():
-        if ch.isalpha():
-            tokens.append(('letter', encoded[idx]))
-            idx += 1
-        elif ch == ' ':
-            tokens.append(('space', None))
-        else:
-            tokens.append(('punct', ch))
-    
-    current = ""
-    for ttype, val in tokens:
-        if ttype == 'letter':
-            current += val + ' '
-        elif ttype == 'space':
-            current = current.rstrip() + '   '
-        else:
-            current += val + ' '
-        if len(current) > 52:
+    # Format output
+    bs_int = int(bs) if bs != '' and bs is not None else -1  # -1 = default (word-spaced)
+    if bs_int == 0 or bs_int == -1:
+        # Word-spaced mode (original behavior)
+        lines = []; idx = 0
+        tokens = []
+        for ch in s.upper():
+            if ch.isalpha():
+                tokens.append(('letter', encoded[idx]))
+                idx += 1
+            elif ch == ' ':
+                tokens.append(('space', None))
+            else:
+                tokens.append(('punct', ch))
+        current = ""
+        for ttype, val in tokens:
+            if ttype == 'letter':
+                current += val + ' '
+            elif ttype == 'space':
+                current = current.rstrip() + '   '
+            else:
+                current += val + ' '
+            if len(current) > 52:
+                lines.append(current.rstrip())
+                current = ""
+        if current.rstrip():
             lines.append(current.rstrip())
-            current = ""
-    if current.rstrip():
-        lines.append(current.rstrip())
-    y = '\n\n\n'.join(lines)
+        y = '\n\n\n'.join(lines)
+    else:
+        # Block mode (like Nihilist)
+        z = 0
+        y = ""
+        for i in range(len(encoded)):
+            y += str(encoded[i]) + " "
+            if i % bs_int == bs_int - 1:
+                z += 1
+                if (bs_int == 1 and z == 16) or (1 < bs_int < 7 and z == 3) or (bs_int >= 7 and z == 2):
+                    y += "\n\n\n"; z = 0
+                else:
+                    y += "   "
     # Build question text
     bonus_text = " \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
 

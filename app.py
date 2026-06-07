@@ -466,7 +466,8 @@ def dispatch(row):
         kw_difficulty    = row.get('kw_difficulty', 'Easy')
         return ciphers.homophonic_formatter(pt, key1, value, hint_type, hint, crib_val, bonus,
                                             kw_letters_given=kw_letters_given,
-                                            kw_difficulty=kw_difficulty)
+                                            kw_difficulty=kw_difficulty,
+                                            bs=key3)
     else:
         raise ValueError(f"Unknown cipher: {cipher}")
 
