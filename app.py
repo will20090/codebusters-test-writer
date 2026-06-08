@@ -1025,6 +1025,10 @@ def contact():
 def security():
     return render_template('security.html')
 
+@app.route('/guide')
+def guide():
+    return render_template('guide.html')
+
 @app.route('/practice')
 def practice():
     return render_template('practicebuilder.html')

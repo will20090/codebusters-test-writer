@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>User Guide — Codebusters Test Builder</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: monospace; background: #f0f0f0; color: #222; min-height: 100vh; }
+
+#topbar { background: #222; color: #eee; padding: 10px 24px; font-size: 16px; letter-spacing: 1px; font-weight: bold; display: flex; align-items: center; justify-content: space-between; }
+#topbar a { color: #aaa; font-size: 12px; text-decoration: none; font-weight: normal; letter-spacing: 0; }
+#topbar a:hover { color: #fff; }
+
+#content { max-width: 760px; margin: 40px auto; padding: 0 20px 80px; }
+
+h2 { font-size: 15px; font-weight: bold; margin: 32px 0 12px; border-bottom: 2px solid #222; padding-bottom: 6px; }
+h3 { font-size: 13px; font-weight: bold; margin: 20px 0 8px; color: #444; }
+p { font-size: 13px; line-height: 1.7; margin-bottom: 10px; color: #333; }
+ul, ol { font-size: 13px; line-height: 1.7; padding-left: 20px; margin-bottom: 10px; color: #333; }
+li { margin-bottom: 4px; }
+
+.intro { font-size: 13px; color: #555; margin-bottom: 28px; line-height: 1.7; }
+
+table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0 16px; }
+th { background: #222; color: #eee; padding: 6px 10px; text-align: left; font-weight: bold; }
+td { border: 1px solid #ccc; padding: 6px 10px; background: #fff; vertical-align: top; }
+tr:nth-child(even) td { background: #f8f8f8; }
+
+.tip { background: #fff; border-left: 3px solid #222; padding: 8px 12px; font-size: 12px; color: #444; margin: 10px 0 16px; }
+
+.section-divider { border: none; border-top: 1px solid #ccc; margin: 32px 0; }
+
+footer { position: fixed; bottom: 0; left: 0; right: 0; background: #f0f0f0; border-top: 1px solid #ddd; padding: 10px 24px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 11px; color: #aaa; }footer a { color: #888; text-decoration: none; }
+footer a:hover { color: #222; }
+.footer-credit { position: relative; cursor: default; }
+.footer-credit-hover { display: none; position: absolute; bottom: 0; left: 0; background: #f0f0f0; font-size: 11px; color: #aaa; white-space: nowrap; }.footer-credit:hover .footer-credit-default { visibility: hidden; }
+.footer-credit:hover .footer-credit-hover { display: block; }
+
+.cipher-block { background: #fff; border: 1px solid #ddd; margin-bottom: 10px; padding: 12px 14px; }
+.cipher-name { font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+.cipher-modes { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.mode { background: #222; color: #eee; font-size: 11px; padding: 2px 8px; }
+.cipher-fields { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.field { font-size: 12px; color: #333; }
+.field-label { font-weight: bold; color: #222; display: inline-block; min-width: 130px; }
+.cipher-note { font-size: 11px; color: #888; margin-top: 6px; border-top: 1px solid #eee; padding-top: 6px; }
+
+.cipher-block { background: #fff; border: 1px solid #ddd; margin-bottom: 10px; padding: 12px 14px; }
+.cipher-name { font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+.cipher-modes { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.mode { background: #444; color: #eee; font-size: 11px; padding: 2px 8px; cursor: pointer; border: 1px solid #444; user-select: none; }
+.mode:hover { background: #555; border-color: #555; }
+.mode.active { background: #222; color: #fff; border-color: #222; }
+.cipher-fields { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.field { font-size: 12px; color: #333; }
+.field-label { font-weight: bold; color: #222; display: inline-block; min-width: 130px; }
+.cipher-note { font-size: 11px; color: #888; margin-top: 6px; border-top: 1px solid #eee; padding-top: 6px; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  CODEBUSTERS TEST WRITER
+  <a href="/">← Back to My Tests</a>
+</div>
+
+
+<div id="content">
+<h2>User Guide</h2>
+  <p class="intro">
+    This brief guide should cover everything you need to know to build competition tests and practice tests using this website.
+  </p>
+
+  <!-- TIPS -->
+  <h2>General Tips</h2>
+  <ul>
+    <li>Tests <b>autosave</b> as you work. Look for the <b>Saved</b> indicator in the top bar</li>
+    <li>The <b>Regenerate</b> button re-generates the question text without changing the plain/ciphertext</li>
+    <li><b>This website will not work for any devices using iOS. The PDF viewer isn't supported by Apple's built in browser PDF viewer.</b></li>
+  </ul>
+
+  <!-- TEST BUILDER -->
+  <h2>Test Builder</h2>
+  <p>Used to build full tests for competitions with each question being fully customizable.</p>
+
+  <h3>Tournament Setup</h3>
+  <p>Click the <b>Tournament Setup + Timed</b> tab to configure (It should open up automatically when you first create a test):</p>
+  <ul>
+    <li>Tournament name, division, and date</li>
+    <li>Timed question plaintext, point value, and signal phrase</li>
+    <li>Writer names</li>
+    <li>Cover image (jpg or png both work)</li>
+  </ul>
+
+  <h3>Adding Questions</h3>
+  <ol>
+    <li>Pick a <b>cipher</b> and <b>type</b> (Decode, Crib, Extract, etc.)</li>
+    <li>Enter the <b>plaintext</b> </li>
+    <li>Fill in key fields for that cipher (keyword, shift, block size, etc.)</li>
+    <li>Click <b>Add Question</b> </li> 
+  </ol>
+  <div class="tip">The question text is auto-generated. You can edit it in the text box below the key fields before adding, or click the question later to edit it.</div>
+  <div class="tip">If a question is invalid, a red error message should pop up telling you what to fix.</div>
+
+  <h3>Managing Questions</h3>
+  <ul>
+    <li><b>Click</b> any question to edit it in place</li>
+    <li><b>Drag</b> questions to reorder them</li>
+    <li><b>×</b> removes a question</li>
+    <li><b>Randomize Order</b> shuffles the list</li>
+    <li>Bonus questions are marked with ★ and tracked automatically in the scoring table</li>
+  </ul>
+
+  <h3>Preview & Download</h3>
+  <ul>
+    <li>The previews should automatically update after each edit</li>
+    <li>Click <b>Refresh Preview</b> to manually compile and view the PDF on the right</li>
+    <li>Toggle between <b>Test</b> and <b>Answer Key</b> tabs</li>
+    <li><b>Download Test PDF</b> / <b>Download Key PDF</b> to save</li>
+  </ul>
+  <div class="tip">To download the PDFs, use the buttons at the top bar of the website, not the ones built-in to the PDF viewer. Using the PDF viewer buttons will not save your tournament info in the PDF name</div>
+
+  <h3>Sharing</h3>
+  <p>Click <b>Share</b> on any test to give other users edit access. You can remove their access at any time. Shared tests appear in the dashboard marked "Shared with you."</p>
+
+  <h3>Edit History</h3>
+  <p>The <b>Edit History</b> tab logs every change made to a test — who made it, when, and what changed. Click any entry to expand a before/after diff.</p>
+
+  <hr class="section-divider">
+
+  <!-- PRACTICE BUILDER -->
+  <h2>Practice Test Builder</h2>
+  <p>Generates mixed practice tests automatically. Quotes are drawn from a database of ~40,000 English quotes and ~6,000 Spanish quotes, filtered by length for each cipher.</p>
+
+  <h3>Creating a Test</h3>
+  <ol>
+    <li>Pick a cipher and type, configure any key options</li>
+    <li>Set a <b>count</b> for how many of that cipher to generate</li>
+    <li>Click <b>+ Add to Queue</b></li>
+    <li>Repeat for as many cipher types as you want</li>
+  </ol>
+
+  <h3>Generating</h3>
+  <p>Click <b>Generate Practice Test</b> to generate all queued questions at once. A progress bar tracks generation. Failed questions are skipped with a warning in the console (Press Ctrl + Shift + I).</p>
+
+
+  <hr class="section-divider">
+
+<!-- CIPHER REFERENCE -->
+  <h2>Cipher Reference</h2>
+  <div class="tip">The Hill and Affine ciphers are out of rotation for the 26-27 season and are therefore currently disabled in both modes.</div>
+
+  <!-- ARISTOCRAT -->
+  <div class="cipher-block" id="cb-aristo">
+    <div class="cipher-name">Aristocrat / Patristocrat / Xenocrypt</div>
+    <div class="cipher-modes">
+      <span class="mode active" onclick="setMode('aristo','DECODE')">Decode</span>
+      <span class="mode" onclick="setMode('aristo','EXTRACT')">Extract</span>
+    </div>
+    <div class="cipher-fields" id="cf-aristo">
+      <div class="field"><span class="field-label">Keyword</span> the cipher keyword</div>
+      <div class="field"><span class="field-label">Shift</span> integer shift for the alphabet</div>
+      <div class="field"><span class="field-label">Alph Type</span> K1, K2, K3, or blank (random derangement)</div>
+      <div class="field"><span class="field-label">Hint Type</span> None, Word, Letters, Subject, or combinations</div>
+      <div class="field"><span class="field-label">Hint Text</span> the hint string shown to solvers</div>
+    </div>
+    <div class="cipher-note" id="cn-aristo">Xenocrypt encodes Spanish text and supports ñ in the plaintext.</div>
+  </div>
+
+  <!-- ATBASH -->
+  <div class="cipher-block">
+    <div class="cipher-name">Atbash</div>
+    <div class="cipher-modes"><span class="mode active">Decode</span></div>
+    <div class="cipher-fields">
+      <div class="field"><span class="field-label">Block Size</span> default 5; 0 = preserve word spacing</div>
+    </div>
+  </div>
+
+  <!-- BACONIAN -->
+  <div class="cipher-block" id="cb-bacon">
+    <div class="cipher-name">Baconian</div>
+    <div class="cipher-modes">
+      <span class="mode active" onclick="setMode('bacon','LETTERS')">Letters</span>
+      <span class="mode" onclick="setMode('bacon','RANDOM_LETTERS')">Random Letters</span>
+      <span class="mode" onclick="setMode('bacon','SEQUENCE')">Sequence</span>
+      <span class="mode" onclick="setMode('bacon','WORDS')">Words</span>
+    </div>
+    <div class="cipher-fields" id="cf-bacon"></div>
+    <div class="cipher-note" id="cn-bacon"></div>
+  </div>
+
+  <!-- CAESAR -->
+  <div class="cipher-block">
+    <div class="cipher-name">Caesar</div>
+    <div class="cipher-modes"><span class="mode active">Decode</span></div>
+    <div class="cipher-fields">
+      <div class="field"><span class="field-label">Shift</span> integer (mod 26)</div>
+    </div>
+  </div>
+
+  <!-- COLUMNAR -->
+  <div class="cipher-block">
+    <div class="cipher-name">Complete Columnar</div>
+    <div class="cipher-modes"><span class="mode active">Crib</span></div>
+    <div class="cipher-fields">
+      <div class="field"><span class="field-label">Columns</span> number of columns (integer)</div>
+      <div class="field"><span class="field-label">Crib Word</span> a phrase from the plaintext given to solvers</div>
+    </div>
+  </div>
+
+  <!-- CRYPTARITHM -->
+  <div class="cipher-block">
+    <div class="cipher-name">Cryptarithm</div>
+    <div class="cipher-modes"><span class="mode active">Decode</span></div>
+    <div class="cipher-fields">
+      <div class="field"><span class="field-label">Operation</span> Addition, Subtraction, Multiplication, or Other</div>
+      <div class="field"><span class="field-label">Problem Text</span> the cryptarithm layout, auto-filled from template, edit as needed</div>
+      <div class="field"><span class="field-label">Solution Numbers</span> space-separated answer digits, e.g. 123 456 789</div>
+    </div>
+    <div class="cipher-note">The plaintext area is now written in the Verbatim font in LaTex.</div>
+  </div>
+
+  <!-- FRACMORSE -->
+  <div class="cipher-block">
+    <div class="cipher-name">Fractionated Morse</div>
+    <div class="cipher-modes"><span class="mode active">Crib</span></div>
+    <div class="cipher-fields">
+      <div class="field"><span class="field-label">Keyword</span> the cipher keyword</div>
+      <div class="field"><span class="field-label">Crib</span> a word from the plaintext</div>
+      <div class="field"><span class="field-label">Hint Type</span> None, Start Crib, Middle Crib, or End Crib</div>
+      <div class="field"><span class="field-label">Manual Hint</span> overrides auto-generated Morse hint if filled in</div>
+    </div>
+    <div class="cipher-note">The Morse symbol mapping hint is auto-generated from the crib, so leave Manual Hint blank</div>
+  </div>
+
+  <!-- NIHILIST -->
+  <div class="cipher-block" id="cb-nihilist">
+    <div class="cipher-name">Nihilist</div>
+    <div class="cipher-modes">
+      <span class="mode active" onclick="setMode('nihilist','DECODE')">Decode</span>
+      <span class="mode" onclick="setMode('nihilist','CRIB')">Crib</span>
+    </div>
+    <div class="cipher-fields" id="cf-nihilist"></div>
+  </div>
+
+  <!-- PORTA -->
+  <div class="cipher-block" id="cb-porta">
+    <div class="cipher-name">Porta</div>
+    <div class="cipher-modes">
+      <span class="mode active" onclick="setMode('porta','DECODE')">Decode</span>
+      <span class="mode" onclick="setMode('porta','CRIB')">Crib</span>
+    </div>
+    <div class="cipher-fields" id="cf-porta"></div>
+  </div>
+
+  <!-- CHECKERBOARD -->
+  <div class="cipher-block" id="cb-checker">
+    <div class="cipher-name">Checkerboard</div>
+    <div class="cipher-modes">
+      <span class="mode active" onclick="setMode('checker','DECODE')">Decode</span>
+      <span class="mode" onclick="setMode('checker','CRIB')">Crib</span>
+    </div>
+    <div class="cipher-fields" id="cf-checker"></div>
+  </div>
+
+  <!-- HOMOPHONIC -->
+  <div class="cipher-block" id="cb-homo">
+    <div class="cipher-name">Homophonic</div>
+    <div class="cipher-modes">
+      <span class="mode active" onclick="setMode('homo','DECODE')">Decode</span>
+      <span class="mode" onclick="setMode('homo','CRIB')">Crib</span>
+    </div>
+    <div class="cipher-fields" id="cf-homo"></div>
+    <div class="cipher-note" id="cn-homo"></div>
+  </div>
+<h3>*Homophonic Decode Extra Info</h3>
+  <p>For Homophonic Decode questions, you can control how much of the keyword is revealed to solvers:</p>
+ 
+  <table>
+    <tr><th>Letters Given</th><th>Difficulty</th><th>What solvers see</th></tr>
+    <tr><td>4 (default)</td><td>—</td><td>Full keyword, e.g. <b>BACK</b></td></tr>
+    <tr><td>2 or 3</td><td>Easy</td><td>A random consecutive chunk, e.g. <b>AC</b> or <b>BAC</b></td></tr>
+    <tr><td>2 or 3</td><td>Hard</td><td>Random letters in alphabetical order, e.g. <b>A, C, and K</b></td></tr>
+  </table>
+  <div class="tip">These options are ignored for Crib-type Homophonic questions.</div>
+ 
+  <h3>Block Size</h3>
+  <p>For ciphers that support block size: <b>0</b> or blank preserves word spacing in the ciphertext. Any positive integer groups letters into fixed-size blocks, hiding word boundaries.</p>
+</div>
+
+
+
+<script>
+const FIELDS = {
+  aristo: {
+    DECODE: {
+      fields: [
+        ['Keyword', 'keyword used to encode the cipher'],
+        ['Shift', 'integer shift for the alphabet (only if K1/K2/K3 is selected)'],
+        ['Alph Type', 'K1, K2, K3, or blank (random map)'],
+        ['Hint Type', 'None, Word, Letters, Subject, or combinations'],
+        ['Hint Text', 'the hint string (plaintext) shown to solvers'],
+      ],
+      note: 'Xenocrypt encodes Spanish text and supports ñ in the plaintext. All accented vowels are auto-removed.'
+    },
+    EXTRACT: {
+      fields: [
+        ['Keyword', 'keyword used to encode the cipher (required final answer)'],
+        ['Shift', 'integer shift for the alphabet'],
+        ['Alph Type', 'K1, K2, or K3 (K4 is not permitted by the ACA)'],
+      ],
+      note: 'Extract asks for the keyword rather than to decode the quote. The keyword length is auto-revealed as a hint.'
+    }
+  },
+  bacon: {
+    LETTERS: {
+      fields: [
+        ['A-letters', 'letters representing A, eg. CODE'],
+        ['B-letters', 'letters representing B, eg. BUST'],
+        ['Hint Type', 'None or Letters (Recommended to be None)'],
+        ['Hint Text', 'hint string shown'],
+      ],
+      note: 'Each plaintext letter encodes to 5 A/B symbols, then each symbol maps to one of the A-letters or B-letters in sequence.'
+    },
+    RANDOM_LETTERS: {
+      fields: [
+        ['A-letters', 'pool of letters representing A'],
+        ['B-letters', 'pool of letters representing B'],
+        ['Hint Type', 'None or Letters'],
+        ['Hint Text', 'hint string shown to solvers'],
+      ],
+      note: 'Same as Letters Baconian but each A or B symbol picks randomly from the pool instead of cycling in sequence.'
+    },
+    SEQUENCE: {
+      fields: [
+        ['A-letters', 'letters representing A'],
+        ['B-letters', 'letters representing B'],
+        ['Hint Type', 'None or Letters'],
+        ['Hint Text', 'hint string shown to solvers'],
+      ],
+      note: 'A and B share one cycling index rather than having separate counters like Letters.'
+    },
+    WORDS: {
+      fields: [
+        ['A/B Table', 'interactive table; click any cell to flip a letter between A and B or choose a preset'],
+      ],
+      note: 'Words type encodes each string of 5 letters as a real English word. Each word\'s letters must match the A/B pattern for that group. Use the presets or click cells to customize the alphabet.'
+    }
+  },
+  nihilist: {
+    DECODE: {
+      fields: [
+        ['Keyword', 'cipher keyword'],
+        ['Polybius Key', 'keyword for the Polybius square'],
+        ['Block Size', '0 = preserve word spacing; blank = default 5'],
+      ]
+    },
+    CRIB: {
+      fields: [
+        ['Keyword', 'cipher keyword'],
+        ['Polybius Key', 'keyword for the Polybius square'],
+        ['Block Size', '0 = preserve word spacing; blank = default 5'],
+        ['Crib', 'a phrase from the plaintext, <b>must be more than 2× the keyword length<b>'],
+      ]
+    }
+  },
+  porta: {
+    DECODE: {
+      fields: [
+        ['Keyword', 'cipher keyword'],
+        ['Block Size', '0 = preserve word spacing; blank = default 5'],
+      ]
+    },
+    CRIB: {
+      fields: [
+        ['Keyword', 'cipher keyword'],
+        ['Block Size', '0 = preserve word spacing; blank = default 5'],
+        ['Crib', 'a phrase from the plaintext shown to solvers'],
+      ]
+    }
+  },
+  checker: {
+    DECODE: {
+      fields: [
+        ['H-Key', '5 letter word for the horizontal axis of the Polybius square'],
+        ['V-Key', '5 letter word for the vertical axis of the Polybius square'],
+        ['Polybius Keyword', 'keyword for the Polybius square'],
+        ['Block Size', '0 = preserve word spacing; blank = default 5'],
+      ]
+    },
+    CRIB: {
+      fields: [
+        ['H-Key', '5 letter word for the horizontal axis of the Polybius square'],
+        ['V-Key', '5 letter word for the horizontal axis of the Polybius square'],
+        ['Polybius Keyword', 'keyword for the Polybius square'],
+        ['Block Size', '0 = preserve word spacing; blank = default 5'],
+        ['Hint / Crib', 'a phrase from the plaintext shown to solvers'],
+      ]
+    }
+  },
+  homo: {
+    DECODE: {
+      fields: [
+        ['Keyword', '4 letter keyword'],
+        ['Block Size', '0 or blank = word spacing;'],
+        ['Hint Type', 'None, Word, Letters, or Subject'],
+        ['Hint Text', 'hint string shown to solvers'],
+        ['Letters Given', '2, 3, or 4 (default)'],
+        ['Difficulty', 'Easy = consecutive chunk of keyword; Hard = alphabetically sorted non-consecutive letters'],
+      ],
+      note: 'Letters Given and Difficulty only affect what keyword hint is printed. See the Homophonic Decode* section below for examples.'
+    },
+    CRIB: {
+      fields: [
+        ['Keyword', 'exactly 4 letters'],
+        ['Block Size', '0 or blank = word spacing; positive integer = fixed blocks'],
+        ['Crib', 'a word from the plaintext shown to solvers'],
+      ],
+      note: 'Hint type, hint text, letters given, and difficulty are all ignored for Crib type.'
+    }
+  }
+};
+
+
+
+function renderFields(id, fields, note) {
+  const el = document.getElementById('cf-' + id);
+  el.innerHTML = fields.map(([label, desc]) =>
+    `<div class="field"><span class="field-label">${label}</span> ${desc}</div>`
+  ).join('');
+  const noteEl = document.getElementById('cn-' + id);
+  if (noteEl) noteEl.textContent = note || '';
+}
+
+function setMode(id, mode) {
+  // Update active button
+  const block = document.getElementById('cb-' + id);
+  block.querySelectorAll('.mode').forEach(m => {
+    m.classList.toggle('active', m.textContent.trim().toUpperCase().replace(' ', '_') === mode || m.getAttribute('onclick').includes("'" + mode + "'"));
+  });
+  const data = FIELDS[id][mode];
+  if (data) renderFields(id, data.fields, data.note);
+}
+
+// Init all dynamic cipher blocks
+function initAll() {
+  renderFields('aristo', FIELDS.aristo.DECODE.fields, FIELDS.aristo.DECODE.note);
+  renderFields('bacon',  FIELDS.bacon.LETTERS.fields,  FIELDS.bacon.LETTERS.note);
+  renderFields('nihilist', FIELDS.nihilist.DECODE.fields);
+  renderFields('porta',    FIELDS.porta.DECODE.fields);
+  renderFields('checker',  FIELDS.checker.DECODE.fields);
+  renderFields('homo',     FIELDS.homo.DECODE.fields, FIELDS.homo.DECODE.note);
+}
+
+initAll();
+</script>
+
+
+<footer>
+  <span class="footer-credit">
+    <span class="footer-credit-default">© 2026 William Huang, Jacob Anil, Luke Choi, Alan Cai. All rights reserved.</span>
+    <span class="footer-credit-hover">But mostly by William lol</span>
+  </span>
+  <span>
+    <a href="/contact">About &amp; Credits</a> &nbsp;·&nbsp;
+    <a href="/security">Privacy &amp; Security</a>
+  </span>
+</footer>
+
+</body>
+</html>

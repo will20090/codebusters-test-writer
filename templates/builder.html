@@ -187,7 +187,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
             <label class="span4">Plaintext
               <div style="display:flex;gap:4px;align-items:center;">
                 <input id="f-plaintext" type="text" placeholder="Enter the plaintext phrase here" style="flex:1" oninput="handlePlaintextInput(this)">
-                <button type="button" id="nhtilde-btn" style="display:none;padding:3px 8px;font-size:13px;cursor:pointer;border:1px solid #ccc;background:#f8f8f8;" onclick="insertNTilde()">n~</button>
+                <button type="button" id="nhtilde-btn" style="display:none;padding:3px 8px;font-size:13px;cursor:pointer;border:1px solid #ccc;background:#f8f8f8;" onclick="insertNTilde()">ñ</button>
               </div>
             </label>
           </div>
@@ -274,23 +274,38 @@ const CIPHER_FIELDS = {
   ARISTOCRAT:   [
     {id:'key1',label:'Keyword (blank=random)'},
     {id:'key2',label:'Shift'},
-    {id:'key3',label:'Alph type (K1/K2/K3/blank)'},
+    {id:'key3',label:'Alph type',type:'select',opts:['Random','K1','K2','K3']},
     {id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},
     {id:'hint',label:'Hint text'}
+  ],
+  ARISTOCRAT_EXTRACT:   [
+    {id:'key1',label:'Keyword'},
+    {id:'key2',label:'Shift'},
+    {id:'key3',label:'Alph type',type:'select',opts:['K1','K2','K3']},
   ],
   PATRISTOCRAT: [
     {id:'key1',label:'Keyword'},
     {id:'key2',label:'Shift'},
-    {id:'key3',label:'Alph type (K1/K2/K3/blank)'},
+    {id:'key3',label:'Alph type',type:'select',opts:['Random','K1','K2','K3']},
     {id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},
     {id:'hint',label:'Hint text'}
+  ],
+  PATRISTOCRAT_EXTRACT: [
+    {id:'key1',label:'Keyword'},
+    {id:'key2',label:'Shift'},
+    {id:'key3',label:'Alph type',type:'select',opts:['K1','K2','K3']},
   ],
   XENOCRYPT:    [
     {id:'key1',label:'Keyword'},
     {id:'key2',label:'Shift'},
-    {id:'key3',label:'Alph type (K1/K2/K3/blank)'},
+    {id:'key3',label:'Alph type',type:'select',opts:['Random','K1','K2','K3']},
     {id:'hint_type',label:'Hint type',type:'select',opts:['None','Word','Letters','Subject','Word + Subject','Letters + Subject']},
     {id:'hint',label:'Hint text'}
+  ],
+  XENOCRYPT_EXTRACT:    [
+    {id:'key1',label:'Keyword'},
+    {id:'key2',label:'Shift'},
+    {id:'key3',label:'Alph type',type:'select',opts:['K1','K2','K3']},
   ],
   ATBASH:       [{id:'key3',label:'Block size (default 5)'}],
   BACONIAN_LETTERS:   [
@@ -375,10 +390,10 @@ const CIPHER_TYPES = {
   PATRISTOCRAT: ['DECODE','EXTRACT'],
   XENOCRYPT:    ['DECODE','EXTRACT'],
   BACONIAN:     ['LETTERS','RANDOM_LETTERS','SEQUENCE','WORDS'],
-  FRACMORSE:    ['DECODE'],
+  FRACMORSE:    ['CRIB'],
   CRYPTARITHM:  ['DECODE'],
   PORTA:        ['DECODE','CRIB'],
-  COLUMNAR:     ['DECODE'],
+  COLUMNAR:     ['CRIB'],
   NIHILIST:     ['DECODE','CRIB'],
   //HILL:         ['DECODE'],
   CHECKERBOARD: ['DECODE','CRIB'],
@@ -508,6 +523,8 @@ function buildKeyFields() {
     else if (typeVal === 'SEQUENCE') fieldKey = 'BACONIAN_SEQUENCE';
     else if (typeVal === 'RANDOM_LETTERS') fieldKey = 'BACONIAN_RANDOM';
     else fieldKey = 'BACONIAN_LETTERS';
+  } else if (['ARISTOCRAT','PATRISTOCRAT','XENOCRYPT'].includes(cipher) && typeVal === 'EXTRACT') {
+    fieldKey = cipher + '_EXTRACT';
   }
   const fields = CIPHER_FIELDS[fieldKey] || [];
   const div = document.getElementById('key-hints');
@@ -721,7 +738,7 @@ function buildPayload() {
     cipher, plaintext, value: parseInt(value), type, bonus,
     key1: getBaconKey1(),
     key2: getField('key2'),
-    key3: resolvedOp,
+    key3: resolvedOp === 'Random' ? '' : resolvedOp,
     key4: key4Val,
     hint_type: getField('hint_type'),
     hint: hintVal,
