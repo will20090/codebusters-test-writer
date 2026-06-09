@@ -723,11 +723,11 @@ function buildPayloadFromTask(task, pt, homoKws = [], checkKws = []) {
   }
 
   if (cipher === 'COLUMNAR') {
-    const cols = key1 ? key1 : String(Math.floor(Math.random() * 4) + 3);
-    // Auto-crib: first word of plaintext
-    const autoCrib = key2 || autoPickCribMin4(pt);
+    const cols = key1 ? parseInt(key1) : Math.floor(Math.random() * 4) + 3;
+    const minCribLen = cols - 1;
+    const autoCrib = key2 || autoPickCribMinLen(pt, minCribLen);
     return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
-             key1: cols, key2: autoCrib, key3:'', key4:'', hint_type:'None', hint:'' };
+             key1: String(cols), key2: autoCrib, key3:'', key4:'', hint_type:'None', hint:'' };
   }
 
   if (cipher === 'BACONIAN') {
@@ -744,6 +744,7 @@ function buildPayloadFromTask(task, pt, homoKws = [], checkKws = []) {
         'BBAAABBBAABBAAABBBAABBAAAB',
       ];
       const alph = key1 && key1.length === 26 ? key1 : BACON_PRESETS[Math.floor(Math.random() * BACON_PRESETS.length)];
+      const crib = autoPickCribMin4(pt);
       return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
                key1: alph, key2:'', key3:'', key4:'', hint_type:'None', hint:'' };
     }
