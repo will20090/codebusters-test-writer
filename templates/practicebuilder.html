@@ -653,7 +653,7 @@ const totalToGen = queueEntries.reduce((s, e) => s + e.count, 0);
           answer_bold: data.answer_bold,
           keyword: data.keyword || null,
           payload: payload,
-          qtext: '',
+          qtext: extractQtext(data.latex),
         });
       }
     } catch(e) {
@@ -746,8 +746,8 @@ function buildPayloadFromTask(task, pt, homoKws = [], checkKws = []) {
       const alph = key1 && key1.length === 26 ? key1 : BACON_PRESETS[Math.floor(Math.random() * BACON_PRESETS.length)];
       const crib = autoPickCribMin4(pt);
       return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
-               key1: alph, key2:'', key3:'', key4:'', hint_type:'None', hint:'' };
-    }
+               key1: alph, key2:'', key3: crib, key4:'', hint_type:'None', hint:'' };
+      }
     const a = key1 || randomBaconLetters('A');
     const b = key2 || randomBaconLetters('B', a);
     return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
@@ -850,6 +850,10 @@ function randomBaconLetters(role, existing) {
   return 'BCDFGHJKLMNPQRSTVWXYZ';
 }
 
+function extractQtext(latex) {
+  const m = latex.match(/\\question(?:\[\d+\])?\s+([\s\S]*?)(?=\n\\parskip|\n\\Large|\n\\begin|\n\\vfill|\n\n)/);
+  return m ? m[1].trim() : '';
+}
 function autoPickCrib(pt) {
   const words = pt.replace(/[^A-Za-z ]/g,'').toUpperCase().split(' ').filter(Boolean);
   if (!words.length) return '';

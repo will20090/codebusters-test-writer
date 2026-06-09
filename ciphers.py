@@ -247,23 +247,28 @@ def baconianWordsFormatter(s, alph, crib, value, hint_type, bonus):
     s = re.sub(r'[^a-zA-Z]', '', s)
     t = bacon_words_encode(s, alph)
     bonus_text = " \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
-    pt = s.upper(); crib_c = re.sub(r'[^A-Z]','',crib.upper()) if crib else ""
+    pt = s.upper()
+    crib_c = re.sub(r'[^A-Z]', '', crib.upper()) if crib else ""
+    base = f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Baconian}} cipher.{bonus_text}"
     if crib_c:
-        try: hint_type = detect_hint_type(pt, crib_c)
-        except: pass
-    if hint_type == "Start Crib":
-        q = f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Baconian}} cipher. You are told that the plaintext starts with \\textbf{{{crib_c}}}.{bonus_text}"
-    elif hint_type == "End Crib":
-        q = f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Baconian}} cipher. You are told that the plaintext ends with \\textbf{{{crib_c}}}.{bonus_text}"
-    elif hint_type == "Middle Crib" and crib_c:
-        idx = pt.find(crib_c)
-        all_words = t.split()
-        crib_words = " ".join(all_words[idx:idx+len(crib_c)])
-        q = (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Baconian}} cipher. "
-             f"You are told that the plaintext contains \\textbf{{{crib_c}}}, encoding to \\textbf{{{crib_words}}}, "
-             f"or characters {idx+1}-{idx+len(crib_c)}.{bonus_text}")
+        try:
+            ht = detect_hint_type(pt, crib_c)
+        except:
+            ht = None
+        if ht == "Start Crib":
+            q = base + f" You are told that the plaintext starts with \\textbf{{{crib_c}}}."
+        elif ht == "End Crib":
+            q = base + f" You are told that the plaintext ends with \\textbf{{{crib_c}}}."
+        elif ht == "Middle Crib":
+            idx = pt.find(crib_c)
+            # idx is letter index; each plaintext letter = 1 encoded word
+            crib_encoded_words = ' '.join(t.split()[idx:idx+len(crib_c)])
+            q = base + (f" You are told that the plaintext contains \\textbf{{{crib_c}}}, "
+                        f"encoding to \\textbf{{{crib_encoded_words}}}.")
+        else:
+            q = base
     else:
-        q = f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Baconian}} cipher.{bonus_text}"
+        q = base
 
     bacon_table = (
         "\n{\\normalsize\n\\begin{flushleft}\n\\begin{tabular}\n"
