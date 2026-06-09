@@ -731,7 +731,22 @@ function buildPayloadFromTask(task, pt, homoKws = [], checkKws = []) {
   }
 
   if (cipher === 'BACONIAN') {
-    // Generate random A/B letters if not specified
+    if (typeVal === 'WORDS') {
+      // key1 must be a 26-char A/B string for the alphabet table
+      const BACON_PRESETS = [
+        'ABABABABABABABABABABABABABAB',
+        'AABBAABBAABBAABBAABBAABBAA',
+        'BABABABABABABABABABABABABAB',
+        'BBAABBAABBAABBAABBAABBAABB',
+        'AAABBBAAABBBAAABBBAAABBBAA',
+        'BBBAAABBBAAABBBAAABBBAAABB',
+        'AABBBAAABBAABBBAAABBAABBBA',
+        'BBAAABBBAABBAAABBBAABBAAAB',
+      ];
+      const alph = key1 && key1.length === 26 ? key1 : BACON_PRESETS[Math.floor(Math.random() * BACON_PRESETS.length)];
+      return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
+               key1: alph, key2:'', key3:'', key4:'', hint_type:'None', hint:'' };
+    }
     const a = key1 || randomBaconLetters('A');
     const b = key2 || randomBaconLetters('B', a);
     return { cipher, plaintext: pt, value, type: typeVal, bonus: false,
