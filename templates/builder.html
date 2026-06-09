@@ -1247,6 +1247,9 @@ async function loadTestData() {
     window.location.href = window.location.protocol + '//' + window.location.host + '/';
     return;
   }
+  const meRes = await fetch('/api/me');
+    const meData = await meRes.json();
+    window._myUid = meData.uid;
   const t = await res.json();
   if (t.error) { setStatus('Error loading test: ' + t.error); return; }
   document.getElementById('test-title').textContent = t.name;
@@ -1274,6 +1277,7 @@ async function loadTestData() {
   renderList();
   if (questions.length === 0) switchLeftTab('setup');
   if (questions.length > 0) setStatus('Test loaded. Click Refresh Preview to view.');
+  initSSE();
 }
 
 async function autosave() {
@@ -1300,6 +1304,53 @@ function scheduleSave() {
   saveTimer = setTimeout(autosave, 1200);
 }
 
+let _sseSource = null;
+
+function initSSE() {
+    if (!currentTestId) return;
+    if (_sseSource) { _sseSource.close(); _sseSource = null; }
+    const src = new EventSource('/api/tests/' + currentTestId + '/stream');
+    _sseSource = src;
+    src.onmessage = function(e) {
+        const d = JSON.parse(e.data);
+        if (d.by === window._myUid) return;  // ignore own saves
+        if (editingIndex >= 0) return;        // don't clobber mid-edit
+        questions = d.questions || questions;
+        renderList();
+        pdfCache = { test: null, key: null };
+        previewDirty = true;
+        setStatus('Live update from collaborator.');
+        refreshPreview();
+        if (d.settings) applyRemoteSettings(d.settings);
+    };
+    src.onerror = function() {
+        console.warn('SSE dropped, browser will auto-retry.');
+    };
+}
+
+function applyRemoteSettings(s) {
+    ['tournament','tqvalue','tqphrase','tqcipher','writers'].forEach(function(k) {
+        const el = document.getElementById('s-' + k);
+        if (el && s[k] !== undefined && document.activeElement !== el) el.value = s[k];
+    });
+    if (s.division) {
+        const el = document.getElementById('s-division');
+        if (el && document.activeElement !== el) el.value = s.division;
+    }
+    if (s.compdate) {
+        const el = document.getElementById('s-compdate');
+        if (el && document.activeElement !== el) {
+            const p = s.compdate.split('/');
+            if (p.length === 3)
+                el.value = p[2] + '-' + String(p[0]).padStart(2,'0') + '-' + String(p[1]).padStart(2,'0');
+        }
+    }
+    if (s.cover_image && s.cover_image !== coverImageData) {
+        coverImageData = s.cover_image;
+        document.getElementById('s-cover-status').textContent = 'Updated by collaborator';
+    }
+    updateBonusNums();
+}
 async function openShareModal() {
   document.getElementById('share-err').textContent = '';
   document.getElementById('share-input').value = '';

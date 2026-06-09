@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from cryptography.fernet import Fernet
+import queue, threading
 
 sys.path.insert(0, os.path.dirname(__file__))
 import ciphers
@@ -16,6 +17,19 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = True
 
 BASE = os.path.dirname(__file__)
+
+# ── SSE live-sync ─────────────────────────────────────────────────────────
+_sse_clients: dict = {}  # tid -> [Queue, ...]
+_sse_lock = threading.Lock()
+
+def sse_publish(tid, payload):
+    with _sse_lock:
+        qs = list(_sse_clients.get(tid, []))
+    for q in qs:
+        try:
+            q.put_nowait(payload)
+        except queue.Full:
+            pass
 
 # -- Database --
 
@@ -277,6 +291,11 @@ def update_test(tid):
         (json.dumps(new_settings), encrypt_questions(new_questions), now, tid, current_user(), current_user())
     )
     cur2.close(); cur.close(); conn.close()
+    sse_publish(tid, {
+        'by': current_user(),
+        'settings': new_settings,
+        'questions': new_questions,
+    })
     return jsonify({'ok': True})
 
 @app.route('/api/tests/<tid>', methods=['DELETE'])
@@ -1033,7 +1052,32 @@ def guide():
 def practice():
     return render_template('practicebuilder.html')
 
+@app.route('/api/tests/<tid>/stream')
+def test_stream(tid):
+    err = require_login()
+    if err: return err
+    q = queue.Queue(maxsize=30)
+    with _sse_lock:
+        _sse_clients.setdefault(tid, []).append(q)
+    def generate():
+        try:
+            while True:
+                try:
+                    data = q.get(timeout=25)
+                    yield f'data: {json.dumps(data)}\n\n'
+                except queue.Empty:
+                    yield ': ping\n\n'
+        finally:
+            with _sse_lock:
+                clients = _sse_clients.get(tid, [])
+                if q in clients:
+                    clients.remove(q)
+    return app.response_class(
+        generate(),
+        mimetype='text/event-stream',
+        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+    )
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, threaded = True)
