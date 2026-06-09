@@ -95,15 +95,16 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
   <div id="top-bar">
     <button onclick="goHome()" style="background:#444">← My Tests</button>
     <h1 id="test-title">CODEBUSTERS TEST BUILDER</h1>
-    <span id="save-status" style="font-size:11px;color:#aaa;margin-right:8px"></span>
-    <div id="left-tabs" style="display:flex;gap:2px;margin-right:8px;">
+    <span id="save-status" style="font-size:11px;color:#aaa;"></span>
+    <div id="left-tabs" style="display:flex;gap:2px;margin-left:auto;">
       <div class="left-tab active" id="ltab-questions" onclick="switchLeftTab('questions')">Questions</div>
       <div class="left-tab" id="ltab-setup" onclick="switchLeftTab('setup')">Tournament Setup + Timed</div>
       <div class="left-tab" id="ltab-history" onclick="switchLeftTab('history')">Edit History</div>
     </div>
     <button onclick="downloadPDF(false)">Download Test PDF</button>
     <button onclick="downloadPDF(true)">Download Key PDF</button>
-    <button onclick ="openShareModal()">Share</button>
+    <button onclick="openShareModal()">Share</button>
+    <span style="font-size:11px;color:#aaa;white-space:nowrap;"><b id="top-username" style="color:#ddd;"></b></span>
   </div>
 
   <div id="main">
@@ -1248,8 +1249,11 @@ async function loadTestData() {
     return;
   }
   const meRes = await fetch('/api/me');
-    const meData = await meRes.json();
-    window._myUid = meData.uid;
+  const meData = await meRes.json();
+  window._myUid = meData.uid;
+  if (meData.username) {
+    document.getElementById('top-username').textContent = meData.username;
+}
   const t = await res.json();
   if (t.error) { setStatus('Error loading test: ' + t.error); return; }
   document.getElementById('test-title').textContent = t.name;
