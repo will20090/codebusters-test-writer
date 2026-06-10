@@ -1,3 +1,6 @@
+from gevent import monkey
+monkey.patch_all()
+
 import re
 from flask import Flask, request, jsonify, send_file, session, render_template
 import subprocess, tempfile, os, json, traceback, shutil, sys, datetime, uuid
@@ -18,8 +21,8 @@ app.config['SESSION_COOKIE_SECURE'] = True
 
 BASE = os.path.dirname(__file__)
 
-# ── SSE live-sync ─────────────────────────────────────────────────────────
-_sse_clients: dict = {}  # tid -> [Queue, ...]
+# SSE sync
+_sse_clients: dict = {}  
 _sse_lock = threading.Lock()
 
 def sse_publish(tid, payload):
@@ -31,7 +34,7 @@ def sse_publish(tid, payload):
         except queue.Full:
             pass
 
-# -- Database --
+# Database
 
 def get_db():
     conn = psycopg2.connect(
@@ -82,7 +85,7 @@ def require_login():
         return jsonify({'error': 'Not logged in'}), 401
     return None
 
-# -- Auth routes --
+#Auth routes
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -142,7 +145,7 @@ def me():
         return jsonify({'uid': current_user(), 'username': session.get('username')})
     return jsonify({'uid': None, 'username': None})
 
-# -- Test routes --
+#Test routes
 
 @app.route('/api/tests', methods=['GET'])
 def get_tests():
@@ -155,7 +158,7 @@ def get_tests():
         (current_user(),)
     )
     owned = cur.fetchall()
-    # Add question count from encrypted field
+    # Add q count
     owned_list = []
     for t in owned:
         t = dict(t)
@@ -269,19 +272,19 @@ def update_test(tid):
             old_set = sorted(old_plaintexts)
             new_set = sorted(new_plaintexts)
             if old_set == new_set and old_plaintexts != new_plaintexts:
-                # Pure reorder — find what moved
+                #random reorder
                 moves = []
                 for i, (op, np) in enumerate(zip(old_plaintexts, new_plaintexts)):
                     if op != np:
                         new_pos = new_plaintexts.index(op)
                         moves.append(f"Q{i+1} → Q{new_pos+1}")
                 detail = ', '.join(moves)
-                # Build before/after as ordered list of cipher+plaintext
+                # Build before/after as ordered list of ct+pt
                 before_order = [{'pos': i+1, 'cipher': q.get('cipher',''), 'plaintext': q.get('plaintext','')} for i, q in enumerate(old_questions)]
                 after_order  = [{'pos': i+1, 'cipher': q.get('cipher',''), 'plaintext': q.get('plaintext','')} for i, q in enumerate(new_questions)]
                 log_history(tid, 'Reordered questions', detail, before_order, after_order)
             else:
-                # Same count, not a pure reorder — check for edits
+                #check for other edits
                 for i, (oq, nq) in enumerate(zip(old_questions, new_questions)):
                     if oq.get('payload') != nq.get('payload') or oq.get('qtext') != nq.get('qtext'):
                         log_history(tid, 'Edited question', f"Q{i+1}: {nq.get('cipher','')} — {nq.get('plaintext','')}", oq, nq)
@@ -351,12 +354,12 @@ def share_test(tid):
     if not username: return jsonify({'error': 'Username required'}), 400
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    # check target user exists
+    # check user exists
     cur.execute('SELECT id FROM users WHERE username = %s', (username,))
     target = cur.fetchone()
     if not target: cur.close(); conn.close(); return jsonify({'error': 'User not found'}), 404
     if target['id'] == current_user(): cur.close(); conn.close(); return jsonify({'error': 'Cannot share with yourself'}), 400
-    # check test belongs to current user
+    # check test belongs to user
     cur.execute('SELECT id FROM tests WHERE id = %s AND user_id = %s', (tid, current_user()))
     if not cur.fetchone(): cur.close(); conn.close(); return jsonify({'error': 'Not found'}), 404
     # insert share record (ignore if already exists)
@@ -422,7 +425,7 @@ def dispatch(row):
     key1      = row.get('key1','')
     key2      = row.get('key2','')
     key3      = row.get('key3','')   # block size for nihilist/porta/affine/checkerboard
-    key4      = row.get('key4','')   # crib plaintext for nihilist/porta/affine/checkerboard (CRIB type)
+    key4      = row.get('key4','')   # crib plaintext for nihilist/porta/affine/checkerboard (CRIB)
     rtype     = row.get('type','DECODE')
     extract   = (rtype == 'EXTRACT')
 

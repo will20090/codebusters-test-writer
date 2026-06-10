@@ -8,4 +8,4 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-CMD gunicorn app:app --bind 0.0.0.0:$PORT
+CMD gunicorn app:app --bind 0.0.0.0:$PORT --worker-class gevent --workers 1 --worker-connections 100 --timeout 120
