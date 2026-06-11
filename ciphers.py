@@ -1069,10 +1069,11 @@ def homophonic_formatter(s, keyword, value, hint_type, hint, crib, bonus,
             else:
                 letters_str = f"\\textbf{{{chosen[0]}}}, \\textbf{{{chosen[1]}}}, and \\textbf{{{chosen[2]}}}"
             kw_hint = f"and you are told that the keyword contains the letters {letters_str}"
-        else:
+        else:  # Easy
             start = random.randint(0, len(keyword) - n)
             substr = keyword[start:start + n]
-            kw_hint = f"and you are told that the keyword contains the string \\textbf{{{substr}}}"
+            pattern = '\\_' * start + substr + '\\_' * (len(keyword) - start - n)
+            kw_hint = f"and you are told that the keyword contains the following letters in the given positions: \\textbf{{{pattern}}}"
         q = (f"\\normalsize \\question[{value}] Decode this phrase that was encoded using the \\textbf{{Homophonic}} cipher "
              f"{kw_hint}.{bonus_text}")
     # Build the homophonic table for solvers
