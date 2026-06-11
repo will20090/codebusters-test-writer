@@ -393,6 +393,14 @@ def fractionatedFormatter(s, keyword, crib, value, hint_type, hint, bonus):
     s = re.sub(r"[^\w\s]","",s).upper()
     encoded, stream = frac_encode(s, keyword.replace(" ",""))
 
+    if crib and hint_type in ("None", "", None):
+        try:
+            pt_check = re.sub(r"[^\w]","",s).upper()
+            cr_check = re.sub(r"[^\w]","",crib).upper()
+            hint_type = detect_hint_type(pt_check, cr_check)
+        except:
+            pass
+
     # Group encoded into lines of ~13 characters each, separated by newlines
     chars = list(encoded)
     chunks = [chars[i:i+13] for i in range(0, len(chars), 13)]
