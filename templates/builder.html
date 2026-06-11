@@ -96,7 +96,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
     <button onclick="goHome()" style="background:#444">← My Tests</button>
     <h1 id="test-title">CODEBUSTERS TEST BUILDER</h1>
     <span id="save-status" style="font-size:11px;color:#aaa;"></span>
-    <div id="left-tabs" style="display:flex;gap:2px;margin-left:auto;">
+    <div id="left-tabs" style="display:flex;gap:2px;">
       <div class="left-tab active" id="ltab-questions" onclick="switchLeftTab('questions')">Questions</div>
       <div class="left-tab" id="ltab-setup" onclick="switchLeftTab('setup')">Tournament Setup + Timed</div>
       <div class="left-tab" id="ltab-history" onclick="switchLeftTab('history')">Edit History</div>
@@ -104,8 +104,8 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
     <button onclick="downloadPDF(false)">Download Test PDF</button>
     <button onclick="downloadPDF(true)">Download Key PDF</button>
     <button onclick="openShareModal()">Share</button>
-    <span style="font-size:11px;color:#aaa;white-space:nowrap;"><b id="top-username" style="color:#ddd;"></b></span>
-  </div>
+    <span style="font-size:11px;color:#aaa;white-space:nowrap;margin-left:auto;"><b id="top-username" style="color:#ddd;"></b></span>
+   </div>
 
   <div id="main">
 
@@ -772,6 +772,7 @@ async function addQuestion() {
   const payload = buildPayload();
   const btn = document.getElementById('add-btn');
   btn.textContent = 'Generating...'; btn.disabled = true;
+  let success = false;
   try {
     const res = await fetch('/api/generate', {
       method: 'POST',
@@ -783,6 +784,7 @@ async function addQuestion() {
       document.getElementById('form-error').textContent = data.error;
       return;
     }
+    success = true;
     const label = payload.cipher + ' [' + payload.value + 'pt]' + (payload.bonus ? ' *' : '');
     const sub = payload.plaintext || '(no plaintext)';
     const formQtext = document.getElementById('f-qtext').value.trim();
@@ -805,7 +807,7 @@ async function addQuestion() {
     document.getElementById('form-error').textContent = 'Network error: ' + e.message;
   } finally {
     btn.textContent = 'Add Question'; btn.disabled = false;
-    if (editingIndex < 0) resetForm();
+    if (editingIndex < 0 && success) resetForm();
   }
 }
 
