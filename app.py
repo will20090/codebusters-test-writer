@@ -9,6 +9,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from cryptography.fernet import Fernet
 import queue, threading
+import scoring
 
 sys.path.insert(0, os.path.dirname(__file__))
 import ciphers
@@ -557,10 +558,7 @@ def build_latex(settings, questions_data, is_key=False):
         import base64
         hdr, b64data = cover_image.split(',', 1)
         ext = 'png' if 'png' in hdr else 'jpg'
-        img_tmp = os.path.join(tempfile.gettempdir(), f'cbcover.{ext}')
-        with open(img_tmp, 'wb') as f:
-            f.write(base64.b64decode(b64data))
-        img_latex = rf'\includegraphics[width=10cm,height=6cm,keepaspectratio]{{{img_tmp}}}'
+        img_tmp = os.path.join(tempfile.gettempdir(), f'cbcover_{uuid.uuid4().hex}.{ext}')
 
     compdate_line = rf'{{\large {compdate}}} \\[1.2em]' if compdate else ''
     if is_key:
@@ -1054,6 +1052,17 @@ def guide():
 @app.route('/practice')
 def practice():
     return render_template('practicebuilder.html')
+
+@app.route('/api/suggest_points', methods=['POST'])
+def suggest_points():
+    err = require_login()
+    if err: return err
+    try:
+        data = request.get_json()
+        result = scoring.get_suggestion(data)
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/tests/<tid>/stream')
 def test_stream(tid):
