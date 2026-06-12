@@ -553,12 +553,20 @@ def build_latex(settings, questions_data, is_key=False):
         tqcipher = tqplaintext.upper()
         tq_freq_row = '&'.join([''] * 26)
 
-    img_latex = r'\fbox{\parbox[c][6cm][c]{10cm}{\centering\small xcoverart.png}}'
+    img_latex = r'\fbox{\parbox[c][6cm][c]{10cm}{\centering\small No cover image}}'
+    cover_image_path = None
     if cover_image and cover_image.startswith('data:image'):
         import base64
         hdr, b64data = cover_image.split(',', 1)
         ext = 'png' if 'png' in hdr else 'jpg'
         img_tmp = os.path.join(tempfile.gettempdir(), f'cbcover_{uuid.uuid4().hex}.{ext}')
+        try:
+            with open(img_tmp, 'wb') as imgf:
+                imgf.write(base64.b64decode(b64data))
+            cover_image_path = img_tmp
+            img_latex = rf'\includegraphics[width=10cm,height=6cm,keepaspectratio]{{{img_tmp}}}'
+        except Exception:
+            pass
 
     compdate_line = rf'{{\large {compdate}}} \\[1.2em]' if compdate else ''
     if is_key:
