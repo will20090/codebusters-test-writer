@@ -985,11 +985,11 @@ def compile_pdf(latex_str):
     for _ in range(2):
         r = subprocess.run(
             ['pdflatex', '-interaction=nonstopmode', '-output-directory', tmpdir, tex],
-            capture_output=True, text=True, timeout=60
+            capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60
         )
     if not os.path.exists(pdf):
         log = os.path.join(tmpdir, 'test.log')
-        msg = open(log).read()[-4000:] if os.path.exists(log) else (r.stdout if r else '')[-4000:]
+        msg = open(log, encoding='utf-8', errors='replace').read()[-4000:] if os.path.exists(log) else (r.stdout if r else '')[-4000:]
         raise RuntimeError(msg)
     return pdf
 
@@ -1140,6 +1140,22 @@ def test_stream(tid):
         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
     )
 
+@app.route('/api/debug/dump/<tid>', methods=['GET'])
+def debug_dump(tid):
+    err = require_login()
+    if err: return err
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('SELECT * FROM tests WHERE id = %s AND (user_id = %s OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))', (tid, current_user(), current_user()))
+    t = cur.fetchone()
+    cur.close(); conn.close()
+    if not t: return jsonify({'error': 'Not found'}), 404
+    t = dict(t)
+    questions = decrypt_questions(t.get('questions_encrypted', ''))
+    t['questions'] = questions
+    t.pop('questions_encrypted', None)
+    print(json.dumps(t, indent=2))
+    return jsonify(t)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000, threaded = True)

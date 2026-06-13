@@ -104,6 +104,7 @@ h3 { font-size: 13px; margin-bottom: 10px; color: #555; }
         <!-- Replace the single New Test button with two -->
         <button onclick="openNewTestModal()">+ New Test</button>
         <button onclick="openPracticeModal()">Generate Practice Test</button>
+        <button onclick="openToebesModal()">Upload from Toebes</button>
         <button class="secondary" onclick="doLogout()">← Log Out</button>
       </div>
     </div>
@@ -127,6 +128,381 @@ h3 { font-size: 13px; margin-bottom: 10px; color: #555; }
   </div>
 </div>
 
+<div id="toebes-modal-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center;">
+  <div style="background:#fff;padding:24px 28px;min-width:380px;max-width:520px;font-family:monospace;">
+    <h3 style="font-size:14px;margin-bottom:14px;">Upload from Toebes</h3>
+    <p style="font-size:12px;color:#555;margin-bottom:10px;">
+      Select the exported Toebes JSON file from your files. A new test will be created with the
+      converted questions. <strong>Cryptarithms</strong> are flagged with
+      <code>[REVIEW]</code> in the question label. Open each flagged
+      question and re-enter the problem text and solution numbers manually,
+      since these can't be converted automatically.
+    </p>
+    <input type="file" id="toebes-file-input" accept=".json,application/json" style="font-family:monospace;font-size:12px;margin-bottom:10px;width:100%;">
+    <div id="toebes-status" style="font-size:12px;color:#555;min-height:16px;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeToebesModal()" style="background:#888;color:#fff;border:none;padding:6px 14px;cursor:pointer;font-family:monospace;font-size:13px;">Cancel</button>
+      <button id="toebes-go-btn" onclick="runToebesImport()" style="background:#222;color:#fff;border:none;padding:6px 14px;cursor:pointer;font-family:monospace;font-size:13px;">Import &amp; Convert</button>
+    </div>
+  </div>
+</div>
+<script>
+// ── Toebes Import ─────────────────────────────────────────────────────────
+ 
+function openToebesModal() {
+  document.getElementById('toebes-status').textContent = '';
+  document.getElementById('toebes-file-input').value = '';
+  document.getElementById('toebes-modal-bg').style.display = 'flex';
+}
+function closeToebesModal() {
+  document.getElementById('toebes-modal-bg').style.display = 'none';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const bg = document.getElementById('toebes-modal-bg');
+  if (bg) bg.addEventListener('click', e => { if (e.target === bg) closeToebesModal(); });
+});
+ 
+function setToebesStatus(msg) {
+  document.getElementById('toebes-status').textContent = msg;
+}
+ 
+// -- Helpers -----------------------------------------------------------------
+ 
+function stripHtml(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html || '';
+  return tmp.textContent.replace(/\s+/g, ' ').trim();
+}
+ 
+// Convert a Toebes "abMapping" string of A/B (length 26, repeating-ish) into
+// the 26-char A/B alphabet string used by your Baconian Words widget
+// (baconAlph). Toebes abMapping is keyed to letters A-Z in order already.
+function convertAbMapping(abMapping) {
+  if (!abMapping) return 'ABABABABABABABABABABABABABAB';
+  let s = abMapping.toUpperCase().replace(/[^AB]/g, '');
+  while (s.length < 26) s += s[s.length % (abMapping.length || 1)] || 'A';
+  return s.slice(0, 26);
+}
+ 
+// Map Toebes encodeType -> your alph type (key3) for ARISTOCRAT/PATRISTOCRAT/XENOCRYPT
+function mapAlphType(encodeType) {
+  switch ((encodeType || '').toLowerCase()) {
+    case 'k1': return 'K1';
+    case 'k2': return 'K2';
+    case 'k3': return 'K3';
+    default: return '';
+  }
+}
+ 
+// Build a base payload object with sane defaults
+function basePayload(cipher, type, value) {
+  return {
+    cipher, plaintext: '', value: value || 100, type: type || 'DECODE', bonus: false,
+    key1: '', key2: '', key3: '', key4: '',
+    hint_type: 'None', hint: '',
+    kw_letters_given: '', kw_difficulty: 'Easy',
+    crypto_image: '', crypto_image_scale: 0.5,
+  };
+}
+ 
+// Returns { payload, reviewNote } or null if unsupported
+function convertCipher(entry) {
+  const ctype = (entry.cipherType || '').toLowerCase();
+  const pt = (entry.cipherString || '').trim();
+  const value = entry.points || 100;
+  const bonus = !!entry.specialbonus;
+  let reviewNote = null;
+ 
+  switch (ctype) {
+    case 'aristocrat':
+    case 'patristocrat': {
+      const isXeno = (entry.curlang || 'en') !== 'en';
+      const cipher = isXeno ? 'XENOCRYPT' : (ctype === 'patristocrat' ? 'PATRISTOCRAT' : 'ARISTOCRAT');
+      const p = basePayload(cipher, 'DECODE', value);
+      p.plaintext = pt;
+      p.key1 = entry.keyword || '';
+      p.key2 = String(entry.offset || '');
+      p.key3 = mapAlphType(entry.encodeType);
+      if (entry.usehint && entry.hint) {
+        p.hint_type = 'Word';
+        p.hint = entry.hint;
+      }
+      p.bonus = bonus; // builder hides bonus for these anyway
+      return { payload: p };
+    }
+ 
+    case 'caesar': {
+      const p = basePayload('CAESAR', 'DECODE', value);
+      p.plaintext = pt;
+      p.key1 = String(entry.offset || '');
+      p.bonus = bonus;
+      return { payload: p };
+    }
+ 
+    case 'atbash': {
+      const p = basePayload('ATBASH', 'DECODE', value);
+      p.plaintext = pt;
+      p.key3 = '5';
+      p.bonus = bonus;
+      return { payload: p };
+    }
+ 
+    case 'baconian': {
+      const op = (entry.operation || '').toLowerCase();
+      const p = basePayload('BACONIAN', 'LETTERS', value);
+      p.plaintext = pt;
+      // Per instructions: fold "sequence" (and any non-words type) into LETTERS
+      if (op === 'words') {
+        p.type = 'WORDS';
+        p.key1 = convertAbMapping(entry.abMapping);
+      } else {
+        p.type = 'LETTERS';
+        // A-letters / B-letters: Toebes doesn't expose these directly for
+        // sequence/letters mode (it's baked into abMapping + texta/textb).
+        // Default to the standard AEIOU / BCDFG... split; flag for review
+        // only if a crib/hint was specified, since the cipher will still
+        // generate validly with defaults.
+        p.key1 = 'AEIOULNRSTD';
+        p.key2 = 'BCFGHJKMPQVWXYZ';
+        if (entry.crib) {
+          p.hint_type = 'Letters';
+          p.hint = `the plaintext starts with ${entry.crib.toUpperCase()}`;
+          reviewNote = 'Baconian A/B letter sets defaulted — verify or set hint manually';
+        }
+      }
+      p.bonus = bonus;
+      return { payload: p, reviewNote };
+    }
+ 
+    case 'compcolumnar': {
+      const p = basePayload('COLUMNAR', 'CRIB', value);
+      p.plaintext = pt;
+      p.key1 = String(entry.columns || '');
+      p.key2 = entry.crib || '';
+      p.bonus = bonus;
+      if (!entry.crib) reviewNote = 'No crib found in source — added blank crib, please set one';
+      return { payload: p, reviewNote };
+    }
+ 
+    case 'fractionatedmorse': {
+      const p = basePayload('FRACMORSE', 'CRIB', value);
+      p.plaintext = pt;
+      p.key1 = entry.keyword || '';
+      p.key2 = entry.crib || '';
+      p.bonus = bonus;
+      if (!entry.crib) {
+        p.type = 'CRIB';
+        reviewNote = 'No crib found — please add a crib word from the plaintext';
+      }
+      return { payload: p, reviewNote };
+    }
+ 
+    case 'nihilistsub': {
+      const hasCrib = !!(entry.crib && entry.crib.trim());
+      const p = basePayload('NIHILIST', hasCrib ? 'CRIB' : 'DECODE', value);
+      p.plaintext = pt;
+      p.key1 = entry.keyword || '';
+      p.key2 = entry.polybiusKey || '';
+      p.key3 = String(entry.blocksize !== undefined ? entry.blocksize : 5);
+      p.key4 = hasCrib ? entry.crib : '';
+      p.bonus = bonus;
+      return { payload: p };
+    }
+ 
+    case 'porta': {
+      const hasCrib = !!(entry.crib && entry.crib.trim()) || !!(entry.findString && entry.findString.trim());
+      const crib = (entry.crib || entry.findString || '').trim();
+      const p = basePayload('PORTA', hasCrib ? 'CRIB' : 'DECODE', value);
+      p.plaintext = pt;
+      p.key1 = entry.keyword || '';
+      p.key3 = String(entry.blocksize !== undefined ? entry.blocksize : 5);
+      p.key4 = hasCrib ? crib : '';
+      p.bonus = bonus;
+      return { payload: p };
+    }
+ 
+    case 'checkerboard': {
+      const hasCrib = !!(entry.crib && entry.crib.trim());
+      const p = basePayload('CHECKERBOARD', hasCrib ? 'CRIB' : 'DECODE', value);
+      p.plaintext = pt;
+      // H-key/V-key are flipped between Toebes and this builder
+      p.key1 = entry.keyword2 || '';  // H-key (was V-key in Toebes)
+      p.key2 = entry.keyword || '';   // V-key (was H-key in Toebes)
+      p.key3 = entry.polybiusKey || '';
+      p.key4 = String(entry.blocksize !== undefined ? entry.blocksize : 5);
+      p.hint = hasCrib ? entry.crib : '';
+      p.bonus = bonus;
+      return { payload: p };
+    }
+ 
+    case 'cryptarithm': {
+      const p = basePayload('CRYPTARITHM', 'DECODE', value);
+      // Build a rough problem template from cipherString (e.g. "BAD*BE=Odor+true=their")
+      p.key1 = (entry.cipherString || '').toUpperCase();
+      // Toebes "mapping" is letter->digit; your key2 expects the solved
+      // numeric values for the words in cipherString, which can't be derived
+      // generically here — leave blank for manual entry.
+      p.key2 = '';
+      // Guess operation from symbols present
+      const cs = entry.cipherString || '';
+      if (cs.includes('*')) p.key3 = 'Multiplication';
+      else if (cs.includes('-')) p.key3 = 'Subtraction';
+      else p.key3 = 'Addition';
+      p.bonus = bonus;
+      reviewNote = 'Cryptarithm — manual re-entry needed';
+      return { payload: p, reviewNote };
+    }
+ 
+    case 'hill': {
+      const p = basePayload('HILL', 'DECODE', value);
+      p.plaintext = pt;
+      p.key1 = entry.keyword || '';
+      p.bonus = bonus;
+      reviewNote = '[REVIEW] Hill cipher — verify keyword/determinant validity';
+      return { payload: p, reviewNote };
+    }
+ 
+    default:
+      return null;
+  }
+}
+ 
+let _toebesQuestions = null;
+let _toebesSettings = null;
+ 
+async function runToebesImport() {
+  const fileInput = document.getElementById('toebes-file-input');
+  const file = fileInput.files[0];
+  if (!file) { setToebesStatus('Please choose a file.'); return; }
+ 
+  const btn = document.getElementById('toebes-go-btn');
+  btn.disabled = true;
+  setToebesStatus('Reading file...');
+ 
+  let data;
+  try {
+    const text = await file.text();
+    data = JSON.parse(text);
+  } catch (e) {
+    setToebesStatus('Could not parse JSON: ' + e.message);
+    btn.disabled = false;
+    return;
+  }
+ 
+  // Find the TEST.* entry for ordering/title
+  const testKey = Object.keys(data).find(k => k.startsWith('TEST.'));
+  const testMeta = testKey ? data[testKey] : null;
+  const title = (testMeta && testMeta.title) ? testMeta.title : file.name.replace(/\.json$/i, '');
+  const order = (testMeta && Array.isArray(testMeta.questions)) ? testMeta.questions : null;
+ 
+  // Collect cipher entries in order
+  let cipherKeys;
+  if (order) {
+    cipherKeys = order.map(id => 'CIPHER.' + id).filter(k => data[k]);
+  } else {
+    cipherKeys = Object.keys(data).filter(k => k.startsWith('CIPHER.'));
+  }
+ 
+  // Skip the timed question (it's handled separately in your builder's TQ field)
+  const timedId = testMeta && testMeta.timed;
+  if (timedId !== undefined && timedId !== null) {
+    cipherKeys = cipherKeys.filter(k => k !== ('CIPHER.' + timedId));
+  }
+ 
+  const questions = [];
+  const reviewNotes = [];
+  setToebesStatus(`Converting ${cipherKeys.length} questions...`);
+ 
+  for (let i = 0; i < cipherKeys.length; i++) {
+    const entry = data[cipherKeys[i]];
+    const result = convertCipher(entry);
+    if (!result) {
+      reviewNotes.push(`Q${i+1}: unsupported cipher type "${entry.cipherType}" — skipped`);
+      continue;
+    }
+    const { payload, reviewNote } = result;
+    setToebesStatus(`Generating LaTeX for question ${i+1} of ${cipherKeys.length}...`);
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const genData = await res.json();
+      if (!genData.success) {
+        reviewNotes.push(`Q${i+1} (${payload.cipher}): generation error — ${genData.error}`);
+        continue;
+      }
+      let label = payload.cipher + ' [' + payload.value + 'pt]' + (payload.bonus ? ' *' : '');
+      let qtext = stripHtml(entry.question) || extractQtextFromLatex(genData.latex);
+      if (reviewNote) {
+        label = '[REVIEW] ' + label;
+        reviewNotes.push(`Q${i+1} (${payload.cipher}): ${reviewNote}`);
+      }
+      questions.push({
+        latex: genData.latex, cipher: payload.cipher,
+        plaintext: payload.plaintext || '(no plaintext)',
+        label, bonus: payload.bonus,
+        answer: genData.answer, answer_bold: genData.answer_bold,
+        keyword: genData.keyword || null,
+        payload,
+        qtext,
+      });
+    } catch (e) {
+      reviewNotes.push(`Q${i+1} (${payload.cipher}): network error — ${e.message}`);
+    }
+  }
+ 
+  // Create the new test
+  setToebesStatus('Creating test...');
+  const createRes = await fetch('/api/tests', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ name: title, is_practice: false })
+  });
+  const created = await createRes.json();
+  if (created.error) {
+    setToebesStatus('Error creating test: ' + created.error);
+    btn.disabled = false;
+    return;
+  }
+ 
+  // Save questions + settings
+  setToebesStatus('Saving questions...');
+  const settings = {
+    tournament: title, division: '', compdate: '', tqvalue: '250',
+    tqphrase: 'raise your hand', tqcipher: '', writers: 'INSERT WRITERS',
+    bonus_nums: '', cover_image: '',
+  };
+  // If there's a timed question, pull its plaintext into tqcipher
+  if (timedId !== undefined && timedId !== null && data['CIPHER.' + timedId]) {
+    settings.tqcipher = (data['CIPHER.' + timedId].cipherString || '').trim();
+  }
+  const bonusNums = [];
+  questions.forEach((q, i) => { if (q.bonus) bonusNums.push(i + 1); });
+  settings.bonus_nums = bonusNums.length ? bonusNums.join(', ') : 'None';
+ 
+  await fetch('/api/tests/' + created.id, {
+    method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ settings, questions })
+  });
+ 
+  btn.disabled = false;
+  if (reviewNotes.length) {
+    setToebesStatus(`Done with ${reviewNotes.length} item(s) needing review (see test, marked [REVIEW]). Opening test...`);
+  } else {
+    setToebesStatus('Done! Opening test...');
+  }
+ 
+  sessionStorage.setItem('testId', created.id);
+  sessionStorage.removeItem('practiceTestId');
+  setTimeout(() => { window.location.href = '/builder'; }, reviewNotes.length ? 1800 : 600);
+}
+ 
+// Same regex used by builder.html to pull question text out of generated latex
+function extractQtextFromLatex(latex) {
+  const m = latex.match(/\\question(?:\[\d+\])?\s+([\s\S]*?)(?=\n\\parskip|\n\\Large|\n\\begin|\n\\vfill|\n\n)/);
+  return m ? m[1].trim() : '';
+}
+</script>
 <script>
 
 
@@ -359,12 +735,14 @@ function openPracticeModal() {
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-document.getElementById('modal-bg').addEventListener('click', e => {
-  if (e.target === document.getElementById('modal-bg')) closeModal();
-});
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('modal-bg').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-bg')) closeModal();
+  });
 
-document.getElementById('share-modal-bg').addEventListener('click', e => {
-  if (e.target === document.getElementById('share-modal-bg')) closeShareModal();
+  document.getElementById('share-modal-bg').addEventListener('click', e => {
+    if (e.target === document.getElementById('share-modal-bg')) closeShareModal();
+  });
 });
 
 </script>
