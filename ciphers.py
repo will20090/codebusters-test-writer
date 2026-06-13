@@ -329,13 +329,20 @@ def columnarFormatter(s, columns, crib, value, bonus):
 
 # ── Cryptarithm ───────────────────────────────────────────────────────────────
 
-def cryptarithm_formatter(value, problem_text, solution_numbers, operation, bonus):
+def cryptarithm_formatter(value, problem_text, solution_numbers, operation, bonus, image_path=None, image_scale=0.5):
     nums = str(solution_numbers)
     math_nums = "\\:".join(nums.split())
     bonus_text = " \\emph{$\\bigstar$\\textbf{This question is a special bonus question.}}" if bonus else ""
+    if image_path:
+        scale = float(image_scale) if image_scale else 0.5
+        body = (f"\\begin{{flushleft}}\n" # might be center
+                f"\\includegraphics[width={scale:.2f}\\linewidth,keepaspectratio]{{{image_path}}}\n"
+                f"\\end{{flushleft}}\n")
+    else:
+        body = f"\\Large\n\\begin{{verbatim}}\n{problem_text}\n\\end{{verbatim}}\n"
     return (f"\\normalsize \\question[{value}] Solve this \\textbf{{cryptarithm}} for ${math_nums}$. "
             f"Write out your final answer and $\\boxed{{\\text{{box}}}}$ it.{bonus_text}\n"
-            f"\\parskip 1cm\n\n\\Large\n\\begin{{verbatim}}\n{problem_text}\n\\end{{verbatim}}\n"
+            f"\\parskip 1cm\n\n{body}"
             f"\\vfill\n\\uplevel{{\\hrulefill}}")
 
 # ── Fractionated Morse ────────────────────────────────────────────────────────

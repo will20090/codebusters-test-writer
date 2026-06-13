@@ -449,7 +449,17 @@ def dispatch(row):
     elif cipher == 'COLUMNAR':
         return ciphers.columnarFormatter(pt, int(key1), key2, value, bonus)
     elif cipher == 'CRYPTARITHM':
-        return ciphers.cryptarithm_formatter(value, key1, key2, key3, bonus)
+        crypto_image = row.get('crypto_image', '')
+        crypto_image_scale = float(row.get('crypto_image_scale', 0.5))
+        image_path = None
+        if crypto_image and crypto_image.startswith('data:image'):
+            import base64
+            hdr, b64data = crypto_image.split(',', 1)
+            ext = 'png' if 'png' in hdr else 'jpg'
+            image_path = os.path.join(tempfile.gettempdir(), f'crypto_{uuid.uuid4().hex}.{ext}')
+            with open(image_path, 'wb') as imgf:
+                imgf.write(base64.b64decode(b64data))
+        return ciphers.cryptarithm_formatter(value, key1, key2, key3, bonus, image_path=image_path, image_scale=crypto_image_scale)
     elif cipher == 'FRACMORSE':
         return ciphers.fractionatedFormatter(pt, key1, key2, value, hint_type, hint, bonus)
     elif cipher == 'HILL':
@@ -938,13 +948,32 @@ def compile_pdf(latex_str):
     tmpdir = tempfile.mkdtemp()
     tex = os.path.join(tmpdir, 'test.tex')
     pdf = os.path.join(tmpdir, 'test.pdf')
-    with open(tex, 'w', encoding='utf-8') as f: f.write(latex_str)
+    
+    # Copy any externally-referenced image files into tmpdir and rewrite paths
+    import re as _re
+    def copy_image_to_tmpdir(match):
+        path = match.group(1)
+        if os.path.isfile(path):
+            basename = os.path.basename(path)
+            dest = os.path.join(tmpdir, basename)
+            if not os.path.exists(dest):
+                shutil.copy(path, dest)
+            return match.group(0).replace(path, basename)
+        return match.group(0)
+    
+    latex_str = _re.sub(r'\\includegraphics\[[^\]]*\]\{([^}]+)\}', copy_image_to_tmpdir, latex_str)
+    
+    with open(tex, 'w', encoding='utf-8') as f:
+        f.write(latex_str)
     words_src = os.path.join(BASE, 'sgb-words.txt')
-    if os.path.exists(words_src): shutil.copy(words_src, tmpdir)
+    if os.path.exists(words_src):
+        shutil.copy(words_src, tmpdir)
     r = None
     for _ in range(2):
-        r = subprocess.run(['pdflatex', '-interaction=nonstopmode', '-output-directory', tmpdir, tex],
-                           capture_output=True, text=True, timeout=60)
+        r = subprocess.run(
+            ['pdflatex', '-interaction=nonstopmode', '-output-directory', tmpdir, tex],
+            capture_output=True, text=True, timeout=60
+        )
     if not os.path.exists(pdf):
         log = os.path.join(tmpdir, 'test.log')
         msg = open(log).read()[-4000:] if os.path.exists(log) else (r.stdout if r else '')[-4000:]
