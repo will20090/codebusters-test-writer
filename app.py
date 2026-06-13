@@ -648,17 +648,30 @@ Team Number: \underline{{\hspace{{3cm}}}}
         if not isinstance(q, dict):
             return q
         latex = q['latex']
+        # Re-write crypto image fresh from saved base64 (original temp file is gone by next request)
+        payload = q.get('payload', {}) or {}
+        crypto_image = payload.get('crypto_image', '')
+        if crypto_image and crypto_image.startswith('data:image'):
+            import base64 as _b64
+            hdr, b64data = crypto_image.split(',', 1)
+            ext = 'png' if 'png' in hdr else 'jpg'
+            fresh_path = os.path.join(tempfile.gettempdir(), f'crypto_{uuid.uuid4().hex}.{ext}')
+            with open(fresh_path, 'wb') as imgf:
+                imgf.write(_b64.b64decode(b64data))
+            latex = re.sub(
+                r'(\\includegraphics\[[^\]]*\]\{)[^}]+(})',
+                lambda m: m.group(1) + fresh_path + m.group(2),
+                latex
+            )
         qtext = q.get('qtext', '').strip()
         if not qtext:
             return latex
-        import re as _re
-        # Replace the \question line's text with the custom qtext
-        latex = _re.sub(
+        latex = _re2.sub(
             r'(\\normalsize \\question\[\d+\] )(.*?)(\n)',
             lambda m: m.group(1) + qtext + m.group(3),
             latex,
             count=1,
-            flags=_re.DOTALL
+            flags=_re2.DOTALL
         )
         return latex
     
