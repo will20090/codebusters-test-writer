@@ -773,7 +773,6 @@ goats
 arise
 witch
 loves
-queer
 dwell
 backs
 ropes
@@ -1154,7 +1153,6 @@ fails
 ounce
 lodge
 greet
-gypsy
 utter
 paved
 zones
@@ -1835,7 +1833,6 @@ filly
 ovens
 drone
 gauze
-idiot
 fussy
 annoy
 shank
@@ -2764,7 +2761,6 @@ doped
 shush
 rinds
 slush
-moron
 voile
 woken
 fjord
@@ -3431,7 +3427,6 @@ piper
 waxer
 calyx
 basil
-coons
 seine
 piney
 lemma
@@ -4242,7 +4237,6 @@ semis
 bries
 acmes
 piton
-hussy
 torts
 disco
 boozy
@@ -4601,7 +4595,6 @@ supra
 wetly
 plasm
 buffa
-semen
 pukka
 tagua
 paras
@@ -4672,7 +4665,6 @@ watsa
 lento
 spitz
 yawed
-gipsy
 sprat
 cornu
 amahs
@@ -4716,7 +4708,6 @@ folky
 tyres
 wheee
 corky
-injun
 solon
 didot
 kerfs
@@ -5058,7 +5049,6 @@ lupus
 rives
 snood
 schmo
-spazz
 finis
 noter
 pavan
@@ -5443,7 +5433,6 @@ nerts
 cauls
 swive
 lilty
-micks
 arity
 pasha
 finif
