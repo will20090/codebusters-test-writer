@@ -1157,5 +1157,9 @@ def debug_dump(tid):
     print(json.dumps(t, indent=2))
     return jsonify(t)
 
+@app.route('/google24a2ace9420ab353.html')
+def google_verify():
+    return 'google-site-verification: google24a2ace9420ab353.html', 200, {'Content-Type': 'text/html'}
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000, threaded = True)
