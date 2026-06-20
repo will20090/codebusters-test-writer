@@ -68,7 +68,14 @@ h3 { font-size: 13px; margin-bottom: 10px; color: #555; }
 </head>
 <body>
 
-<div id="topbar">CODEBUSTERS TEST WRITER <a href="/guide" style="margin-left:auto;color:#aaa;font-size:14px;font-weight:normal;letter-spacing:0;text-decoration:none;border:1px solid #555;padding:3px 10px;background:#444;">User Guide</a></div>
+<div id="topbar">CODEBUSTERS TEST WRITER
+  <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+    <span id="enigma-btn-wrap" style="display:none;">
+      <a href="/enigma" style="color:#ff0000;font-size:14px;font-weight:normal;letter-spacing:0;text-decoration:none;border:1px solid #555;padding:3px 10px;background:#444;">Secret Enigma Button</a>
+    </span>
+    <a href="/guide" style="color:#aaa;font-size:14px;font-weight:normal;letter-spacing:0;text-decoration:none;border:1px solid #555;padding:3px 10px;background:#444;">User Guide</a>
+  </span>
+</div>
 <div style="position:fixed;bottom:16px;left:24px;font-size:12px;"><a href="/contact" style="color:#666;text-decoration:none;">About & Credits</a></div>
 <div id="app">
 
@@ -174,9 +181,6 @@ function stripHtml(html) {
   return tmp.textContent.replace(/\s+/g, ' ').trim();
 }
  
-// Convert a Toebes "abMapping" string of A/B (length 26, repeating-ish) into
-// the 26-char A/B alphabet string used by your Baconian Words widget
-// (baconAlph). Toebes abMapping is keyed to letters A-Z in order already.
 function convertAbMapping(abMapping) {
   if (!abMapping) return 'ABABABABABABABABABABABABABAB';
   let s = abMapping.toUpperCase().replace(/[^AB]/g, '');
@@ -184,7 +188,6 @@ function convertAbMapping(abMapping) {
   return s.slice(0, 26);
 }
  
-// Map Toebes encodeType -> your alph type (key3) for ARISTOCRAT/PATRISTOCRAT/XENOCRYPT
 function mapAlphType(encodeType) {
   switch ((encodeType || '').toLowerCase()) {
     case 'k1': return 'K1';
@@ -194,7 +197,6 @@ function mapAlphType(encodeType) {
   }
 }
  
-// Build a base payload object with sane defaults
 function basePayload(cipher, type, value) {
   return {
     cipher, plaintext: '', value: value || 100, type: type || 'DECODE', bonus: false,
@@ -205,7 +207,6 @@ function basePayload(cipher, type, value) {
   };
 }
  
-// Returns { payload, reviewNote } or null if unsupported
 function convertCipher(entry) {
   const ctype = (entry.cipherType || '').toLowerCase();
   const pt = (entry.cipherString || '').trim();
@@ -227,7 +228,7 @@ function convertCipher(entry) {
         p.hint_type = 'Word';
         p.hint = entry.hint;
       }
-      p.bonus = bonus; // builder hides bonus for these anyway
+      p.bonus = bonus;
       return { payload: p };
     }
  
@@ -251,17 +252,11 @@ function convertCipher(entry) {
       const op = (entry.operation || '').toLowerCase();
       const p = basePayload('BACONIAN', 'LETTERS', value);
       p.plaintext = pt;
-      // Per instructions: fold "sequence" (and any non-words type) into LETTERS
       if (op === 'words') {
         p.type = 'WORDS';
         p.key1 = convertAbMapping(entry.abMapping);
       } else {
         p.type = 'LETTERS';
-        // A-letters / B-letters: Toebes doesn't expose these directly for
-        // sequence/letters mode (it's baked into abMapping + texta/textb).
-        // Default to the standard AEIOU / BCDFG... split; flag for review
-        // only if a crib/hint was specified, since the cipher will still
-        // generate validly with defaults.
         p.key1 = 'AEIOULNRSTD';
         p.key2 = 'BCFGHJKMPQVWXYZ';
         if (entry.crib) {
@@ -325,9 +320,8 @@ function convertCipher(entry) {
       const hasCrib = !!(entry.crib && entry.crib.trim());
       const p = basePayload('CHECKERBOARD', hasCrib ? 'CRIB' : 'DECODE', value);
       p.plaintext = pt;
-      // H-key/V-key are flipped between Toebes and this builder
-      p.key1 = entry.keyword2 || '';  // H-key (was V-key in Toebes)
-      p.key2 = entry.keyword || '';   // V-key (was H-key in Toebes)
+      p.key1 = entry.keyword2 || '';
+      p.key2 = entry.keyword || '';
       p.key3 = entry.polybiusKey || '';
       p.key4 = String(entry.blocksize !== undefined ? entry.blocksize : 5);
       p.hint = hasCrib ? entry.crib : '';
@@ -337,13 +331,8 @@ function convertCipher(entry) {
  
     case 'cryptarithm': {
       const p = basePayload('CRYPTARITHM', 'DECODE', value);
-      // Build a rough problem template from cipherString (e.g. "BAD*BE=Odor+true=their")
       p.key1 = (entry.cipherString || '').toUpperCase();
-      // Toebes "mapping" is letter->digit; your key2 expects the solved
-      // numeric values for the words in cipherString, which can't be derived
-      // generically here — leave blank for manual entry.
       p.key2 = '';
-      // Guess operation from symbols present
       const cs = entry.cipherString || '';
       if (cs.includes('*')) p.key3 = 'Multiplication';
       else if (cs.includes('-')) p.key3 = 'Subtraction';
@@ -367,9 +356,6 @@ function convertCipher(entry) {
   }
 }
  
-let _toebesQuestions = null;
-let _toebesSettings = null;
- 
 async function runToebesImport() {
   const fileInput = document.getElementById('toebes-file-input');
   const file = fileInput.files[0];
@@ -389,13 +375,11 @@ async function runToebesImport() {
     return;
   }
  
-  // Find the TEST.* entry for ordering/title
   const testKey = Object.keys(data).find(k => k.startsWith('TEST.'));
   const testMeta = testKey ? data[testKey] : null;
   const title = (testMeta && testMeta.title) ? testMeta.title : file.name.replace(/\.json$/i, '');
   const order = (testMeta && Array.isArray(testMeta.questions)) ? testMeta.questions : null;
  
-  // Collect cipher entries in order
   let cipherKeys;
   if (order) {
     cipherKeys = order.map(id => 'CIPHER.' + id).filter(k => data[k]);
@@ -403,7 +387,6 @@ async function runToebesImport() {
     cipherKeys = Object.keys(data).filter(k => k.startsWith('CIPHER.'));
   }
  
-  // Skip the timed question (it's handled separately in your builder's TQ field)
   const timedId = testMeta && testMeta.timed;
   if (timedId !== undefined && timedId !== null) {
     cipherKeys = cipherKeys.filter(k => k !== ('CIPHER.' + timedId));
@@ -452,7 +435,6 @@ async function runToebesImport() {
     }
   }
  
-  // Create the new test
   setToebesStatus('Creating test...');
   const createRes = await fetch('/api/tests', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -465,14 +447,12 @@ async function runToebesImport() {
     return;
   }
  
-  // Save questions + settings
   setToebesStatus('Saving questions...');
   const settings = {
     tournament: title, division: '', compdate: '', tqvalue: '250',
     tqphrase: 'raise your hand', tqcipher: '', writers: 'INSERT WRITERS',
     bonus_nums: '', cover_image: '',
   };
-  // If there's a timed question, pull its plaintext into tqcipher
   if (timedId !== undefined && timedId !== null && data['CIPHER.' + timedId]) {
     settings.tqcipher = (data['CIPHER.' + timedId].cipherString || '').trim();
   }
@@ -497,7 +477,6 @@ async function runToebesImport() {
   setTimeout(() => { window.location.href = '/builder'; }, reviewNotes.length ? 1800 : 600);
 }
  
-// Same regex used by builder.html to pull question text out of generated latex
 function extractQtextFromLatex(latex) {
   const m = latex.match(/\\question(?:\[\d+\])?\s+([\s\S]*?)(?=\n\\parskip|\n\\Large|\n\\begin|\n\\vfill|\n\n)/);
   return m ? m[1].trim() : '';
@@ -505,6 +484,14 @@ function extractQtextFromLatex(latex) {
 </script>
 <script>
 
+// ── Enigma button visibility ──────────────────────────────────────────────────
+const ENIGMA_ALLOWED = ['alan', 'will2009', 'lukechoiiiii', 'jullio'];
+
+function maybeShowEnigmaBtn(username) {
+  if (username && ENIGMA_ALLOWED.includes(username.toLowerCase())) {
+    document.getElementById('enigma-btn-wrap').style.display = 'inline';
+  }
+}
 
 let shareTestId = null;
 
@@ -565,6 +552,7 @@ window.onload = async () => {
     if (!res.ok) throw new Error('not ok');
     const data = await res.json();
     if (data.uid) {
+      maybeShowEnigmaBtn(data.username);
       showDashboard(data.username);
       return;
     }
@@ -608,12 +596,14 @@ async function doAuth() {
     document.getElementById('profile-err').textContent = data.error;
     return;
   }
+  maybeShowEnigmaBtn(data.username);
   showDashboard(data.username);
 }
 
 async function doLogout() {
   await fetch('/api/logout', {method: 'POST'});
   document.getElementById('dashboard-screen').classList.remove('active');
+  document.getElementById('enigma-btn-wrap').style.display = 'none';
   document.getElementById('auth-username').value = '';
   document.getElementById('auth-password').value = '';
   showAuthScreen();

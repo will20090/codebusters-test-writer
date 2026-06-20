@@ -1157,6 +1157,117 @@ def debug_dump(tid):
     print(json.dumps(t, indent=2))
     return jsonify(t)
 
+ENIGMA_ALLOWED = {'alan', 'will2009', 'lukechoiiiii', 'jullio'}
+ 
+def require_enigma():
+    """Return error response if user not logged in or not in the writing group."""
+    err = require_login()
+    if err:
+        return err
+    if session.get('username', '').lower() not in ENIGMA_ALLOWED:
+        return jsonify({'error': 'Forbidden'}), 403
+    return None
+ 
+ 
+@app.route('/enigma')
+def enigma():
+    return render_template('enigma.html')
+ 
+ 
+@app.route('/api/enigma/entries', methods=['GET'])
+def enigma_get_entries():
+    err = require_enigma()
+    if err:
+        return err
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('SELECT * FROM enigma_entries ORDER BY created DESC')
+    rows = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return jsonify(rows)
+ 
+ 
+@app.route('/api/enigma/entries', methods=['POST'])
+def enigma_add_entry():
+    err = require_enigma()
+    if err: return err
+    data = request.get_json()
+    tourney_name = data.get('tourney_name', '').strip()
+    level = data.get('level', 'Invitational').strip()
+    if not tourney_name:
+        return jsonify({'error': 'tourney_name required'}), 400
+    if level not in ('Invitational', 'Tryouts', 'Regionals', 'States'):
+        level = 'Invitational'
+    entry_id = nid()
+    now = datetime.datetime.now().isoformat()
+    added_by = session.get('username', '')
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        'INSERT INTO enigma_entries (id, tourney_name, test_id, level, added_by, created) VALUES (%s, %s, %s, %s, %s, %s)',
+        (entry_id, tourney_name, None, level, added_by, now)
+    )
+    cur.close(); conn.close()
+    return jsonify({'ok': True, 'id': entry_id})
+
+
+@app.route('/api/enigma/entries/<entry_id>', methods=['PATCH'])
+def enigma_update_entry(entry_id):
+    err = require_enigma()
+    if err: return err
+    data = request.get_json()
+    conn = get_db()
+    cur = conn.cursor()
+    if 'level' in data:
+        level = data['level'].strip()
+        if level not in ('Invitational', 'Tryouts', 'Regionals', 'States'):
+            return jsonify({'error': 'Invalid level'}), 400
+        cur.execute('UPDATE enigma_entries SET level = %s WHERE id = %s', (level, entry_id))
+    if 'test_id' in data:
+        cur.execute(
+            'UPDATE enigma_entries SET test_id = %s WHERE id = %s AND added_by = %s',
+            (data['test_id'], entry_id, session.get('username', ''))
+        )
+    cur.close(); conn.close()
+    return jsonify({'ok': True})
+ 
+@app.route('/api/enigma/entries/<entry_id>', methods=['DELETE'])
+def enigma_delete_entry(entry_id):
+    err = require_enigma()
+    if err:
+        return err
+    # Only the person who added it can delete it
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        'DELETE FROM enigma_entries WHERE id = %s AND added_by = %s',
+        (entry_id, session.get('username', ''))
+    )
+    cur.close()
+    conn.close()
+    return jsonify({'ok': True})
+ 
+ 
+@app.route('/api/enigma/check_access/<test_id>', methods=['GET'])
+def enigma_check_access(test_id):
+    err = require_enigma()
+    if err:
+        return err
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        '''SELECT id FROM tests
+           WHERE id = %s
+             AND (user_id = %s
+                  OR id IN (SELECT test_id FROM test_shares WHERE user_id = %s))''',
+        (test_id, current_user(), current_user())
+    )
+    found = cur.fetchone()
+    cur.close()
+    conn.close()
+    return jsonify({'ok': bool(found)})
+
 @app.route('/google24a2ace9420ab353.html')
 def google_verify():
     return 'google-site-verification: google24a2ace9420ab353.html', 200, {'Content-Type': 'text/html'}
