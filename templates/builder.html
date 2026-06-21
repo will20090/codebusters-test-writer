@@ -360,11 +360,13 @@ const CIPHER_FIELDS = {
   CRYPTARITHM:  [
     {id:'key3',label:'Operation',type:'select',opts:['Addition','Subtraction','Multiplication','Other']},
     {id:'key2',label:'Solution numbers (space-separated, e.g. 123 456 789)'},
+    {id:'key5',label:'Solution text (letters, e.g. ABC DEF GHI)'},
     {id:'key1',label:'Problem text (verbatim - auto-filled from template, edit as needed)',type:'textarea'}
 ],
 CRYPTARITHM_IMAGE: [
     {id:'key3',label:'Operation',type:'select',opts:['Addition','Subtraction','Multiplication','Other']},
     {id:'key2',label:'Solution numbers (space-separated, e.g. 123 456 789)'},
+    {id:'key5',label:'Solution text (letters, e.g. ABC DEF GHI)'},
 ],
   FRACMORSE:    [
     {id:'key1',label:'Keyword'},
@@ -862,13 +864,14 @@ function buildPayload() {
     key2: getField('key2'),
     key3: resolvedOp === 'Random' ? '' : resolvedOp,
     key4: key4Val,
+    key5: getField('key5'),
     hint_type: getField('hint_type'),
     hint: hintVal,
     kw_letters_given: getField('kw_letters_given') || '',
     kw_difficulty: getField('kw_difficulty') || 'Easy',
     crypto_image: useCryptoImage ? cryptoImageData : '',
     crypto_image_scale: parseFloat((document.getElementById('crypto-image-scale') || {value: '50'}).value) / 100.0,
-  };
+};
 }
 
 async function regenQtextFromForm() {
@@ -1008,7 +1011,7 @@ function startEdit(i) {
   document.getElementById('f-bonus').checked   = p.bonus    || false;
 
   // Restore all standard key fields
-  ['key1','key2','key3','key4','hint_type','hint'].forEach(function(k) {
+  ['key1','key2','key3','key4','key5','hint_type','hint'].forEach(function(k) {
     const el = document.getElementById('f-' + k);
     if (el && p[k] !== undefined) el.value = p[k];
     // Restore cryptarithm image state

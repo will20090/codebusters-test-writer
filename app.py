@@ -414,6 +414,8 @@ def make_answer_line(q_num, answer, bold, keyword=None, value=None, bonus=False)
         safe_pt = latex_escape(str(answer))
         return rf'\question {pts}{star}\textbf{{{safe_kw}}}: {safe_pt}' + '\n'
     safe = latex_escape(str(answer))
+    if bold:
+        return rf'\question {pts}{star}\textbf{{{safe}}}' + '\n'
     return rf'\question {pts}{star}{safe}' + '\n'
 
 def dispatch(row):
@@ -522,8 +524,9 @@ def generate():
             answer_bold = True
             keyword     = key1
         elif cipher == 'CRYPTARITHM':
-            answer      = key2 if key2 else pt
-            answer_bold = False
+            key5        = data.get('key5', '').strip()
+            answer      = key5 if key5 else (key2 if key2 else pt)
+            answer_bold = bool(key5)
             keyword     = None
         else:
             answer      = pt if pt else (key1 if key1 else '???')
