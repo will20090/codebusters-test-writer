@@ -258,6 +258,7 @@ body { font-family: monospace; font-size: 13px; background: #f5f5f5; color: #222
       <div id="preview-tabs">
         <div class="tab active" id="tab-test" onclick="switchTab('test')">Test</div>
         <div class="tab" id="tab-key" onclick="switchTab('key')">Answer Key</div>
+<div class="tab" id="tab-ref" onclick="switchTab('ref')">Reference Sheet</div>
       </div>
       <div id="preview-toolbar">
         <button onclick="refreshPreview()">Refresh Preview</button>
@@ -1196,6 +1197,8 @@ function switchTab(tab) {
   activeTab = tab;
   document.getElementById('tab-test').className = 'tab' + (tab==='test' ? ' active' : '');
   document.getElementById('tab-key').className  = 'tab' + (tab==='key'  ? ' active' : '');
+  document.getElementById('tab-ref').className  = 'tab' + (tab==='ref'  ? ' active' : '');
+  if (tab === 'ref') { loadRefSheet(); return; }
   const cached = pdfCache[tab];
   if (cached && !previewDirty) {
     const frame = document.getElementById('preview-frame');
@@ -1595,6 +1598,36 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === document.getElementById('share-modal-bg')) closeShareModal();
   });
 });
+
+let _refSheetUrl = null;
+function loadRefSheet() {
+  const frame = document.getElementById('preview-frame');
+  const ph = document.getElementById('preview-placeholder');
+  if (_refSheetUrl) {
+    frame.src = _refSheetUrl + '#toolbar=1&navpanes=0';
+    frame.style.display = 'block';
+    ph.style.display = 'none';
+    setStatus('Reference sheet');
+    return;
+  }
+  setStatus('Compiling reference sheet...');
+  frame.style.display = 'none';
+  ph.style.display = 'flex';
+  ph.textContent = 'Compiling reference sheet...';
+  fetch('/api/reference-sheet')
+    .then(r => { if (!r.ok) throw new Error('compile failed'); return r.blob(); })
+    .then(blob => {
+      _refSheetUrl = URL.createObjectURL(blob);
+      frame.src = _refSheetUrl + '#toolbar=1&navpanes=0';
+      frame.style.display = 'block';
+      ph.style.display = 'none';
+      setStatus('Reference sheet loaded.');
+    })
+    .catch(e => {
+      setStatus('Error: ' + e.message);
+      ph.textContent = 'Error loading reference sheet.';
+    });
+}
 
 // -- Init --
 buildKeyFields();

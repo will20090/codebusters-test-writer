@@ -1275,5 +1275,30 @@ def enigma_check_access(test_id):
 def google_verify():
     return 'google-site-verification: google24a2ace9420ab353.html', 200, {'Content-Type': 'text/html'}
 
+
+_reference_pdf_cache = None
+_reference_pdf_lock = threading.Lock()
+
+@app.route('/api/reference-sheet')
+def reference_sheet():
+    err = require_login()
+    if err: return err
+    global _reference_pdf_cache
+    with _reference_pdf_lock:
+        if _reference_pdf_cache and os.path.exists(_reference_pdf_cache):
+            return send_file(_reference_pdf_cache, mimetype='application/pdf')
+        try:
+            tex_path = os.path.join(BASE, 'reference_sheet.tex')
+            with open(tex_path, encoding='utf-8') as f:
+                latex = f.read()
+            pdf_path = compile_pdf(latex)
+            stable = os.path.join(tempfile.gettempdir(), 'cb_reference_sheet_v1.pdf')
+            shutil.copy(pdf_path, stable)
+            _reference_pdf_cache = stable
+            return send_file(stable, mimetype='application/pdf')
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000, threaded = True)
