@@ -45,28 +45,19 @@ def aristo_letter_replacement(s, keyword="", shift="", alph=""):
         replacement_alphabet = rand_derange(alphabet_upper)
     elif alph == "K1":
         replacement_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        for try_shift in range(shift, shift + 26):
-            alphabet_upper = process_word(keyword, try_shift % 26).upper()
-            if all(alphabet_upper[i] != replacement_alphabet[i] for i in range(26)):
-                break
-        else:
-            alphabet_upper = rand_derange("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        alphabet_upper = process_word(keyword, shift % 26).upper()
+        if any(alphabet_upper[i] == replacement_alphabet[i] for i in range(26)):
+            raise ValueError(f"Shift {shift} causes self mapping, please choose another shift")
     elif alph == "K2":
         alphabet_upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        for try_shift in range(shift, shift + 26):
-            replacement_alphabet = process_word(keyword, try_shift % 26).upper()
-            if all(alphabet_upper[i] != replacement_alphabet[i] for i in range(26)):
-                break
-        else:
-            replacement_alphabet = rand_derange("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        replacement_alphabet = process_word(keyword, shift % 26).upper()
+        if any(alphabet_upper[i] == replacement_alphabet[i] for i in range(26)):
+            raise ValueError(f"Shift {shift} causes self mapping, please choose another shift")
     elif alph == "K3":
         alphabet_upper = process_word(keyword, 0).upper()
-        for try_shift in range(1, 26):
-            replacement_alphabet = process_word(keyword, try_shift).upper()
-            if all(alphabet_upper[i] != replacement_alphabet[i] for i in range(26)):
-                break
-        else:
-            replacement_alphabet = rand_derange("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        replacement_alphabet = process_word(keyword, shift).upper()
+        if any(alphabet_upper[i] == replacement_alphabet[i] for i in range(26)):
+            raise ValueError(f"Shift {shift} causes self mapping, please choose another shift")
     return s.upper().translate(str.maketrans(alphabet_upper, replacement_alphabet))
 
 def aristo_format_sentence(s):
@@ -735,28 +726,16 @@ def xeno_creator(s, value, xtype, hint_type, hint, alph="", keyword="", shift=""
         au="ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"; ru=''.join(derangement(list(au)))
     elif alph=="K2":
         au="ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"; ru=xeno_process_word(keyword,shift).upper()
+        if any(au[i]==ru[i] for i in range(27)):
+            raise ValueError(f"Shift {shift} causes self mapping, please choose another shift")
     elif alph=="K1":
         au=xeno_process_word(keyword,shift).upper(); ru="ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
+        if any(au[i]==ru[i] for i in range(27)):
+            raise ValueError(f"Shift {shift} causes self mapping, please choose another shift")
     elif alph=="K3":
         au=xeno_process_word(keyword,0).upper(); ru=xeno_process_word(keyword,shift).upper()
-    def xeno_derangement(lst):
-        while True:
-            r = lst[:]; random.shuffle(r)
-            if all(x != y for x, y in zip(lst, r)): return r
-
-    attempts = 0
-    while any(au[i] == ru[i] for i in range(27)):
-        attempts += 1
-        if attempts > 50:
-            ru = ''.join(xeno_derangement(list(au))); break
-        if alph == "":
-            ru = ''.join(derangement(list(au)))
-        elif alph == "K1":
-            au = xeno_process_word(keyword, attempts % 26).upper()
-        elif alph == "K2":
-            ru = xeno_process_word(keyword, attempts % 26).upper()
-        elif alph == "K3":
-            ru = xeno_process_word(keyword, attempts % 26).upper()
+        if any(au[i]==ru[i] for i in range(27)):
+            raise ValueError(f"Shift {shift} causes self mapping, please choose another shift")
     replaced=s.upper().translate(str.maketrans(au,ru))
     formatted=aristo_format_sentence(replaced)
 
