@@ -188,6 +188,10 @@ function convertAbMapping(abMapping) {
   return s.slice(0, 26);
 }
  
+function replaceNewmoon(str) {
+  return (str || '').replace(/●/g, '\\newmoon');
+}
+
 function mapAlphType(encodeType) {
   switch ((encodeType || '').toLowerCase()) {
     case 'k1': return 'K1';
@@ -281,9 +285,9 @@ function convertCipher(entry) {
  
     case 'fractionatedmorse': {
       const p = basePayload('FRACMORSE', 'CRIB', value);
-      p.plaintext = pt;
+      p.plaintext = replaceNewmoon(pt);
       p.key1 = entry.keyword || '';
-      p.key2 = entry.crib || '';
+      p.key2 = replaceNewmoon(entry.crib || '');
       p.bonus = bonus;
       if (!entry.crib) {
         p.type = 'CRIB';
@@ -417,6 +421,9 @@ async function runToebesImport() {
       }
       let label = payload.cipher + ' [' + payload.value + 'pt]' + (payload.bonus ? ' *' : '');
       let qtext = stripHtml(entry.question) || extractQtextFromLatex(genData.latex);
+      if (payload.cipher === 'FRACMORSE') {
+        qtext = replaceNewmoon(qtext);
+      }
       if (reviewNote) {
         label = '[REVIEW] ' + label;
         reviewNotes.push(`Q${i+1} (${payload.cipher}): ${reviewNote}`);
